@@ -92,6 +92,30 @@ dialog::backdrop{background:rgba(0,0,0,.7)}
 dialog textarea{width:100%;min-height:120px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;color:var(--ink);font:14px/1.4 ui-monospace,monospace}
 .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:50}
 .toast.show{opacity:1}
+/* ---------- Modo TV (controle remoto) ---------- */
+body.tvmode{font-size:20px}
+body.tvmode header{position:static}
+body.tvmode .bar,body.tvmode main{max-width:none;padding-inline:4vw}
+body.tvmode nav button{font-size:20px;padding:12px 22px;min-height:54px}
+body.tvmode .btn,body.tvmode select,body.tvmode .filters input,body.tvmode .search input{font-size:20px;min-height:54px}
+body.tvmode .chip{font-size:18px;min-height:48px;padding:9px 18px}
+body.tvmode .grid.tv{grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:18px}
+body.tvmode .grid.vod{grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:18px}
+body.tvmode .card .n{font-size:18px}body.tvmode .card .s{font-size:15px}
+body.tvmode .ch-logo{height:110px}
+body.tvmode .fav{display:none}
+body.tvmode .stage{grid-template-columns:minmax(0,1fr) minmax(280px,34%)}
+body.tvmode .screen{aspect-ratio:auto;height:52vh}
+body.tvmode .side{max-height:52vh}
+body.tvmode .side h2{font-size:28px}body.tvmode .side p,body.tvmode .side .meta{font-size:18px}
+body.tvmode .sec{font-size:26px}body.tvmode .plat b{font-size:20px}body.tvmode .plat span{font-size:16px}
+body.tvmode :focus{outline:none}
+body.tvmode :focus-visible,body.tvmode .tvfocus{outline:4px solid var(--on)!important;outline-offset:3px;box-shadow:0 0 0 8px rgba(255,90,78,.25)}
+body.tvmode .card:focus,body.tvmode .card.tvfocus{transform:scale(1.06);z-index:2;border-color:var(--on)}
+body.tvmode .screen:focus{outline:4px solid var(--on)}
+.tvhint{display:none;color:var(--mute);font-size:16px}
+body.tvmode .tvhint{display:block;width:100%}
+@media(prefers-reduced-motion:reduce){body.tvmode .card:focus{transform:none}}
 .skel{background:linear-gradient(90deg,#11201f,#18302f,#11201f);background-size:200% 100%;animation:sk 1.2s infinite;border-radius:12px;height:150px}
 @keyframes sk{to{background-position:-200% 0}}
 @media(max-width:900px){.stage{grid-template-columns:minmax(0,1fr)}.side{max-height:none}}
@@ -111,7 +135,9 @@ dialog textarea{width:100%;min-height:120px;background:var(--bg);border:1px soli
     <button data-v="favs">Minha lista</button>
   </nav>
   <div class="search"><input id="q" type="search" placeholder="Buscar canal, filme ou série…" autocomplete="off"></div>
+  <button class="btn" id="tvBtn" aria-pressed="false">Modo TV</button>
   <button class="btn pri" id="installBtn" hidden>Instalar app</button>
+  <div class="tvhint">Setas para navegar · OK para abrir · OK no vídeo para tela cheia · Voltar para sair</div>
 </div></header>
 <dialog id="iosDlg">
   <h2 style="font:700 20px Archivo;margin:0 0 8px">Instalar no iPhone ou iPad</h2>
@@ -121,7 +147,7 @@ dialog textarea{width:100%;min-height:120px;background:var(--bg);border:1px soli
 
 <main>
   <section class="stage">
-    <div class="screen" id="screen">
+    <div class="screen" id="screen" tabindex="0" aria-label="Player">
       <span class="live" id="liveTag">AO VIVO</span>
       <div class="idle" id="idle"><div><b>Escolha algo para assistir</b>Canais abertos do mundo todo, novelas, filmes e séries clássicos em domínio público.</div></div>
     </div>
@@ -542,6 +568,7 @@ function findFav(k){return S.favs.find(f=>f.key===k)}
 function openCard(card){
   if(card.dataset.tv){const url=card.dataset.tv;const ch=findLive(url)||findFav('tv:'+url);if(ch)playLive(ch)}
   else{const kind=card.dataset.kind,id=card.dataset.vod;const it=S.vod.items.find(i=>i.id===id)||findFav(kind+':'+id);if(it)playVod(it,kind)}
+  if(document.body.classList.contains('tvmode'))setTimeout(()=>{$('#screen').focus({preventScroll:true});window.scrollTo({top:0,behavior:'smooth'})},60);
 }
 $('#grid').onclick=e=>{
   const fb=e.target.closest('.fav');
@@ -577,6 +604,52 @@ $('#installBtn').onclick=async()=>{
   else if(isIOS)$('#iosDlg').showModal();
 };
 $('#iosOk').onclick=()=>$('#iosDlg').close();
+/* ---------- Modo TV: navegação espacial pelo controle remoto ---------- */
+const TV_UA=/android ?tv|googletv|google tv|smart-?tv|smarttv|\btv\b|aft[a-z]|bravia|tizen|web0s|webos|netcast|hbbtv|roku|crkey/i;
+let tvOn=store.get('al_tv',null);if(tvOn===null)tvOn=TV_UA.test(navigator.userAgent);
+function setTV(on){tvOn=on;document.body.classList.toggle('tvmode',on);$('#tvBtn').setAttribute('aria-pressed',on);$('#tvBtn').textContent=on?'Sair do modo TV':'Modo TV';store.set('al_tv',on);
+  if(on)setTimeout(()=>{const f=document.querySelector('#tabs button.on');f&&f.focus()},50)}
+$('#tvBtn').onclick=()=>setTV(!tvOn);
+setTV(tvOn);
+const FOCUSABLE='#tabs button,#tvBtn,#installBtn:not([hidden]),#q,.filters select,.filters input,.filters button,#clsSec button,.chip,.card,.plat a,#screen,.side .btn,#more:not([hidden]),dialog[open] button,dialog[open] input';
+function visible(el){if(!el.offsetParent&&el.id!=='screen')return false;const r=el.getBoundingClientRect();return r.width>0&&r.height>0}
+function moveFocus(dir){
+  const cur=document.activeElement&&document.activeElement!==document.body?document.activeElement:null;
+  const scope=document.querySelector('dialog[open]')||document;
+  const els=[...scope.querySelectorAll(FOCUSABLE)].filter(e=>e!==cur&&visible(e));
+  if(!cur){els[0]&&els[0].focus();return}
+  const a=cur.getBoundingClientRect(),ax=a.left+a.width/2,ay=a.top+a.height/2;
+  let best=null,bs=Infinity;
+  for(const e of els){const b=e.getBoundingClientRect(),bx=b.left+b.width/2,by=b.top+b.height/2,dx=bx-ax,dy=by-ay;
+    let main,cross;
+    if(dir==='right'){if(b.left<a.right-4&&dx<=4)continue;main=Math.max(0,b.left-a.right);cross=Math.abs(dy)}
+    else if(dir==='left'){if(b.right>a.left+4&&dx>=-4)continue;main=Math.max(0,a.left-b.right);cross=Math.abs(dy)}
+    else if(dir==='down'){if(b.top<a.bottom-4&&dy<=4)continue;main=Math.max(0,b.top-a.bottom);cross=Math.abs(dx)}
+    else{if(b.bottom>a.top+4&&dy>=-4)continue;main=Math.max(0,a.top-b.bottom);cross=Math.abs(dx)}
+    const overlap=(dir==='left'||dir==='right')?(b.bottom>a.top&&b.top<a.bottom):(b.right>a.left&&b.left<a.right);
+    const score=main+cross*(overlap?0.3:2.5);
+    if(score<bs){bs=score;best=e}}
+  if(best){best.focus({preventScroll:true});best.scrollIntoView({block:'nearest',inline:'nearest',behavior:'smooth'});
+    const r=best.getBoundingClientRect();if(r.top<80||r.bottom>innerHeight-40)best.scrollIntoView({block:'center',behavior:'smooth'})}
+}
+function tvBack(){
+  if(document.fullscreenElement){document.exitFullscreen().catch(()=>{});return true}
+  const d=document.querySelector('dialog[open]');if(d){d.close();return true}
+  const act=document.activeElement;
+  if(act&&act.closest&&act.closest('#grid')){$('#tabs button.on').focus();window.scrollTo({top:0,behavior:'smooth'});return true}
+  return false;
+}
+document.addEventListener('keydown',e=>{
+  if(!tvOn)return;
+  const k=e.key,t=e.target,typing=t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA');
+  const dir={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right'}[k];
+  if(dir){if(typing&&(dir==='left'||dir==='right'))return;if(t&&t.tagName==='SELECT'&&(dir==='up'||dir==='down'))return;e.preventDefault();moveFocus(dir);return}
+  if(k==='Enter'&&t&&t.id==='screen'){e.preventDefault();const el=$('#screen');
+    try{const p=document.fullscreenElement?document.exitFullscreen():(el.requestFullscreen?el.requestFullscreen():el.webkitRequestFullscreen&&el.webkitRequestFullscreen());p&&p.catch&&p.catch(()=>{})}catch{}
+    return}
+  const back=k==='Escape'||k==='GoBack'||k==='BrowserBack'||e.keyCode===461||e.keyCode===10009||(k==='Backspace'&&!typing);
+  if(back&&tvBack())e.preventDefault();
+},true);
 window.addEventListener('appinstalled',()=>{$('#installBtn').hidden=true;toast('Antena Livre instalado!')});
 }
 </script>
