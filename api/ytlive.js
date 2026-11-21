@@ -18,7 +18,9 @@ function findVideoId(html, finalUrl) {
   const pats = [
     /<link rel="canonical" href="https:\/\/www\.youtube\.com\/watch\?v=([\w-]{11})"/,
     /<meta property="og:url" content="https:\/\/www\.youtube\.com\/watch\?v=([\w-]{11})"/,
-    /"videoDetails":\{"videoId":"([\w-]{11})"/
+    /"videoDetails":\{"videoId":"([\w-]{11})"/,
+    /"liveStreamabilityRenderer":\{"videoId":"([\w-]{11})"/,
+    /"currentVideoEndpoint":\{(?:(?!"videoId")[\s\S]){0,400}?"watchEndpoint":\{"videoId":"([\w-]{11})"/
   ];
   for (const p of pats) { const x = html.match(p); if (x) return x[1]; }
   return null;
@@ -53,6 +55,8 @@ module.exports = async (req, res) => {
       via, status: page.status, finalUrl: page.finalUrl, size: page.html.length,
       title: (page.html.match(/<title>([^<]*)<\/title>/) || [])[1] || null,
       hasCanonical: /rel="canonical"/.test(page.html),
+      canonical: (page.html.match(/<link rel="canonical" href="([^"]+)"/) || [])[1] || null,
+      liveStreamability: /liveStreamabilityRenderer/.test(page.html),
       consent: /consent\.(youtube|google)/.test(page.finalUrl + page.html.slice(0, 5000))
     });
     res.status(200).json(out);
