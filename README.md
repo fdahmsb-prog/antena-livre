@@ -6,6 +6,7 @@ App web para assistir **canais de TV ao vivo** (nacionais e internacionais), **f
 
 - **TV ao vivo**: canais de 18 países (Brasil por padrão) e um grupo internacional, organizados por categoria (Notícias, Esportes, Infantil, Música…).
 - **Filmes e Séries**: acervo de domínio público do Internet Archive, com filtro por década, ano exato e 17 categorias, ordenável por popularidade, ano ou título.
+- **Novelas**: canais de novela 24h ao vivo, buscados nas listas de 14 países e filtráveis por país, e atalhos para plataformas oficiais com novelas completas (Pluto TV, Telemundo, Globoplay).
 - **Minha lista**: favoritos guardados no navegador.
 - **Importar M3U**: carregue a lista do seu provedor de TV (por URL ou arquivo).
 - Busca, layout responsivo (celular e computador) e player HLS (hls.js).

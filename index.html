@@ -69,6 +69,14 @@ select,.filters input{background:var(--panel);border:1px solid var(--line);borde
 .fav{position:absolute;top:6px;left:6px;width:34px;height:34px;border-radius:50%;border:0;background:rgba(0,0,0,.6);cursor:pointer;font-size:17px;line-height:1;color:#fff}
 .fav.on{color:var(--on)}
 .more{display:block;margin:20px auto 0}
+.sec{grid-column:1/-1;font:700 19px/1.2 Archivo;margin:10px 0 0}
+.sec small{display:block;font:400 14px/1.4 Inter;color:var(--mute);margin-top:4px}
+.plat{grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-bottom:8px}
+.plat a{display:block;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;text-decoration:none;color:var(--ink)}
+.plat a:hover{border-color:var(--on)}
+.plat b{font:700 16px Archivo;display:block}
+.plat span{font-size:13px;color:var(--mute)}
+.plat em{font-style:normal;font-size:12px;color:var(--sup);display:block;margin-top:6px}
 .empty{color:var(--mute);padding:40px 0;text-align:center;grid-column:1/-1}
 .note{font-size:13px;color:var(--mute);margin-top:30px;border-top:1px solid var(--line);padding-top:14px}
 dialog{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:16px;max-width:560px;width:calc(100% - 28px);padding:20px}
@@ -79,7 +87,7 @@ dialog textarea{width:100%;min-height:120px;background:var(--bg);border:1px soli
 .skel{background:linear-gradient(90deg,#11201f,#18302f,#11201f);background-size:200% 100%;animation:sk 1.2s infinite;border-radius:12px;height:150px}
 @keyframes sk{to{background-position:-200% 0}}
 @media(max-width:900px){.stage{grid-template-columns:minmax(0,1fr)}.side{max-height:none}}
-@media(max-width:600px){nav{width:100%}nav button{flex:1;padding:9px 6px}.grid.tv{grid-template-columns:repeat(2,minmax(0,1fr))}.grid.vod{grid-template-columns:repeat(2,minmax(0,1fr))}.count{margin-left:0;width:100%}}
+@media(max-width:600px){nav{width:100%;overflow-x:auto}nav button{flex:1 0 auto;padding:9px 10px;font-size:14px}.grid.tv{grid-template-columns:repeat(2,minmax(0,1fr))}.grid.vod{grid-template-columns:repeat(2,minmax(0,1fr))}.count{margin-left:0;width:100%}}
 </style>
 </head>
 <body>
@@ -89,6 +97,7 @@ dialog textarea{width:100%;min-height:120px;background:var(--bg);border:1px soli
     <button data-v="tv" class="on">TV ao vivo</button>
     <button data-v="filmes">Filmes</button>
     <button data-v="series">Séries</button>
+    <button data-v="novelas">Novelas</button>
     <button data-v="favs">Minha lista</button>
   </nav>
   <div class="search"><input id="q" type="search" placeholder="Buscar canal, filme ou série…" autocomplete="off"></div>
@@ -98,7 +107,7 @@ dialog textarea{width:100%;min-height:120px;background:var(--bg);border:1px soli
   <section class="stage">
     <div class="screen" id="screen">
       <span class="live" id="liveTag">AO VIVO</span>
-      <div class="idle" id="idle"><div><b>Escolha algo para assistir</b>Canais abertos do mundo todo, filmes e séries clássicos em domínio público.</div></div>
+      <div class="idle" id="idle"><div><b>Escolha algo para assistir</b>Canais abertos do mundo todo, novelas, filmes e séries clássicos em domínio público.</div></div>
     </div>
     <aside class="side" id="info">
       <h2>Bem-vindo</h2>
@@ -139,9 +148,17 @@ const GENRES=[['','Todos'],['action','Ação'],['comedy','Comédia'],['drama','D
 const DECADES=[['','Todas as décadas'],...[1900,1910,1920,1930,1940,1950,1960,1970,1980,1990,2000,2010].map(d=>[d,d+'s'])];
 const SORTS=[['downloads desc','Mais assistidos'],['year desc','Mais recentes'],['year asc','Mais antigos'],['titleSorter asc','Título A–Z']];
 
+const NOV_COUNTRIES=['br','pt','mx','ar','co','us','es','cl','pe','ve','ec','do','pr','int'];
+const NOV_RE=/novela|telenovela|tlnovela|teleno|dizi|turcas?\b|turkish drama|melodrama/i;
+const NOV_PLAT=[
+  ['Pluto TV','Canal "Novelas" 24h e catálogo sob demanda, grátis com anúncios, em português.','https://pluto.tv/','Grátis · Brasil'],
+  ['Telemundo — Series y novelas','Capítulos completos de novelas latinas, colombianas, turcas e brasileiras dubladas.','https://www.telemundo.com/series-y-novelas/videos','Grátis · em espanhol'],
+  ['Globoplay','Novelas da Globo, inclusive as clássicas. Parte do acervo exige assinatura.','https://globoplay.globo.com/','Grátis / assinatura'],
+];
 /* ---------- estado ---------- */
 const S={view:'tv',country:store.get('al_country','br'),cat:'',tvAll:[],tvShown:60,custom:null,
   vod:{genre:'',decade:'',year:'',sort:'downloads desc',page:1,items:[],total:0,loading:false},
+  nov:{list:null,loading:false,country:''},
   favs:store.get('al_favs',[]),q:''};
 let hls=null,playingKey='';
 
@@ -202,6 +219,20 @@ async function loadCountry(code){
   }catch{S.tvAll=[];toast('Não consegui carregar a lista de canais. Verifique a internet.')}
   if(S.view==='tv')render();
 }
+async function loadNovelas(){
+  const N=S.nov;if(N.list||N.loading)return;N.loading=true;renderGrid(true);
+  const res=await Promise.allSettled(NOV_COUNTRIES.map(async code=>{
+    const r=await fetch(`https://iptv-org.github.io/iptv/countries/${code}.m3u`);if(!r.ok)throw 0;
+    const name=(COUNTRIES.find(c=>c[0]===code)||[,({do:'Rep. Dominicana',pr:'Porto Rico',pe:'Peru',ve:'Venezuela',ec:'Equador'})[code]||code])[1];
+    return parseM3U(await r.text(),name).filter(c=>NOV_RE.test(c.name)||c.groups.some(g=>NOV_RE.test(g)));
+  }));
+  const seen=new Set();N.list=[];
+  res.forEach(r=>{if(r.status==='fulfilled')r.value.forEach(c=>{if(!seen.has(c.url)){seen.add(c.url);N.list.push(c)}})});
+  if(!res.some(r=>r.status==='fulfilled'))toast('Não consegui carregar os canais de novela. Verifique a internet.');
+  N.loading=false;if(S.view==='novelas')render();
+}
+function novFiltered(){const q=S.q.toLowerCase();return (S.nov.list||[]).filter(c=>(!S.nov.country||c.countryName===S.nov.country)&&(!q||c.name.toLowerCase().includes(q)))}
+function findLive(url){return S.tvAll.find(c=>c.url===url)||(S.nov.list||[]).find(c=>c.url===url)}
 function tvFiltered(){const q=S.q.toLowerCase();return S.tvAll.filter(c=>(!S.cat||c.groups.includes(S.cat))&&(!q||c.name.toLowerCase().includes(q)))}
 function tvCard(c){const key='tv:'+c.url;const ini=(c.name.replace(/[^\p{L}\p{N}]/gu,'').slice(0,2).toUpperCase())||'TV';
   return `<div class="card" tabindex="0" data-key="${esc(key)}" data-tv="${esc(c.url)}">
@@ -253,6 +284,13 @@ function render(){
     C.innerHTML=[`<button class="chip ${!S.cat?'on':''}" data-cat="">Todos · ${S.tvAll.length}</button>`,...cats.map(c=>`<button class="chip ${S.cat===c?'on':''}" data-cat="${esc(c)}">${esc(CAT_PT[c]||c)} · ${counts[c]}</button>`)].join('');
     C.hidden=false;
   }else if(S.view==='favs'){F.innerHTML='';C.innerHTML='';C.hidden=true}
+  else if(S.view==='novelas'){
+    F.innerHTML='<div class="filters"><span class="count" id="count"></span></div>';
+    const counts={};(S.nov.list||[]).forEach(c=>counts[c.countryName]=(counts[c.countryName]||0)+1);
+    C.innerHTML=[`<button class="chip ${!S.nov.country?'on':''}" data-nc="">Todos os países · ${(S.nov.list||[]).length}</button>`,
+      ...Object.keys(counts).sort((a,b)=>counts[b]-counts[a]).map(k=>`<button class="chip ${S.nov.country===k?'on':''}" data-nc="${esc(k)}">${esc(k)} · ${counts[k]}</button>`)].join('');
+    C.hidden=false;
+  }
   else{const v=S.vod;
     F.innerHTML=`<div class="filters"><select id="dec" aria-label="Década">${opt(DECADES,v.decade)}</select>
       <input id="yr" type="number" inputmode="numeric" min="1890" max="2026" placeholder="Ano exato" value="${esc(v.year)}" style="width:130px">
@@ -271,6 +309,13 @@ function renderGrid(loading){
     const list=tvFiltered();if(cnt)cnt.textContent=list.length+' canais';
     G.innerHTML=list.length?list.slice(0,S.tvShown).map(tvCard).join(''):'<div class="empty">Nenhum canal encontrado.</div>';
     M.hidden=list.length<=S.tvShown;
+  }else if(S.view==='novelas'){G.className='grid tv';M.hidden=true;
+    const plat=`<h3 class="sec">Novelas completas em plataformas oficiais<small>Abrem no site da emissora ou plataforma, em nova aba.</small></h3>
+      <div class="plat">${NOV_PLAT.map(([n,d,u,t])=>`<a href="${u}" target="_blank" rel="noopener"><b>${esc(n)}</b><span>${esc(d)}</span><em>${esc(t)}</em></a>`).join('')}</div>
+      <h3 class="sec">Canais de novela ao vivo<small>Canais 24h de novelas encontrados nas listas públicas de vários países.</small></h3>`;
+    if(loading||S.nov.loading){G.innerHTML=plat+Array(8).fill('<div class="skel"></div>').join('');return}
+    const list=novFiltered();if(cnt)cnt.textContent=list.length+' canais de novela';
+    G.innerHTML=plat+(list.length?list.map(tvCard).join(''):'<div class="empty">Nenhum canal de novela no ar nas listas agora. Use as plataformas oficiais acima.</div>');
   }else if(S.view==='favs'){G.className='grid vod';
     G.innerHTML=S.favs.length?S.favs.map(f=>f.kind==='tv'?tvCard(f):vodCard(f,f.kind)).join(''):'<div class="empty">Sua lista está vazia. Toque no ♥ de um canal, filme ou série.</div>';M.hidden=true;
   }else{G.className='grid vod';const v=S.vod;
@@ -284,21 +329,22 @@ function renderGrid(loading){
 
 /* ---------- eventos ---------- */
 $('#tabs').onclick=e=>{const b=e.target.closest('button');if(!b)return;S.view=b.dataset.v;
-  if((S.view==='filmes'||S.view==='series')){S.vod.genre=S.vod.genre;render();loadVod(true)}else render()};
+  if((S.view==='filmes'||S.view==='series')){render();loadVod(true)}else{render();if(S.view==='novelas')loadNovelas()}};
 $('#chips').onclick=e=>{const b=e.target.closest('.chip');if(!b)return;
-  if(S.view==='tv'){S.cat=b.dataset.cat;S.tvShown=60;render()}else{S.vod.genre=b.dataset.genre;render();loadVod(true)}};
+  if(S.view==='novelas'){S.nov.country=b.dataset.nc;render()}
+  else if(S.view==='tv'){S.cat=b.dataset.cat;S.tvShown=60;render()}else{S.vod.genre=b.dataset.genre;render();loadVod(true)}};
 $('#more').onclick=()=>{if(S.view==='tv'){S.tvShown+=60;renderGrid(false)}else{S.vod.page++;loadVod(false)}};
 let qt;$('#q').oninput=e=>{clearTimeout(qt);qt=setTimeout(()=>{S.q=e.target.value.trim();
-  if(S.view==='tv'){S.tvShown=60;renderGrid(false)}else if(S.view!=='favs')loadVod(true)},350)};
+  if(S.view==='tv'||S.view==='novelas'){S.tvShown=60;renderGrid(false)}else if(S.view!=='favs')loadVod(true)},350)};
 function findFav(k){return S.favs.find(f=>f.key===k)}
 function openCard(card){
-  if(card.dataset.tv){const url=card.dataset.tv;const ch=S.tvAll.find(c=>c.url===url)||findFav('tv:'+url);if(ch)playLive(ch)}
+  if(card.dataset.tv){const url=card.dataset.tv;const ch=findLive(url)||findFav('tv:'+url);if(ch)playLive(ch)}
   else{const kind=card.dataset.kind,id=card.dataset.vod;const it=S.vod.items.find(i=>i.id===id)||findFav(kind+':'+id);if(it)playVod(it,kind)}
 }
 $('#grid').onclick=e=>{
   const fb=e.target.closest('.fav');
   if(fb){e.stopPropagation();const k=fb.dataset.key,card=fb.closest('.card');
-    let o=findFav(k);if(!o){if(card.dataset.tv){const c=S.tvAll.find(c=>c.url===card.dataset.tv);o=favObj('tv',c)}else{const it=S.vod.items.find(i=>i.id===card.dataset.vod);o=favObj(card.dataset.kind,it)}}
+    let o=findFav(k);if(!o){if(card.dataset.tv){const c=findLive(card.dataset.tv);o=favObj('tv',c)}else{const it=S.vod.items.find(i=>i.id===card.dataset.vod);o=favObj(card.dataset.kind,it)}}
     toggleFav(o);return}
   const card=e.target.closest('.card');if(card)openCard(card)};
 $('#grid').onkeydown=e=>{if(e.key==='Enter'&&e.target.classList.contains('card'))openCard(e.target)};
