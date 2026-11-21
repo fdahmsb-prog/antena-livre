@@ -98,6 +98,8 @@ dialog textarea{width:100%;min-height:120px;background:var(--bg);border:1px soli
     <button data-v="filmes">Filmes</button>
     <button data-v="series">Séries</button>
     <button data-v="novelas">Novelas</button>
+    <button data-v="doramas">Doramas</button>
+    <button data-v="classicos">Clássicos</button>
     <button data-v="favs">Minha lista</button>
   </nav>
   <div class="search"><input id="q" type="search" placeholder="Buscar canal, filme ou série…" autocomplete="off"></div>
@@ -151,14 +153,111 @@ const SORTS=[['downloads desc','Mais assistidos'],['year desc','Mais recentes'],
 const NOV_COUNTRIES=['br','pt','mx','ar','co','us','es','cl','pe','ve','ec','do','pr','int'];
 const NOV_RE=/novela|telenovela|tlnovela|teleno|dizi|turcas?\b|turkish drama|melodrama/i;
 const NOV_PLAT=[
-  ['Pluto TV','Canal "Novelas" 24h e catálogo sob demanda, grátis com anúncios, em português.','https://pluto.tv/','Grátis · Brasil'],
-  ['Telemundo — Series y novelas','Capítulos completos de novelas latinas, colombianas, turcas e brasileiras dubladas.','https://www.telemundo.com/series-y-novelas/videos','Grátis · em espanhol'],
-  ['Globoplay','Novelas da Globo, inclusive as clássicas. Parte do acervo exige assinatura.','https://globoplay.globo.com/','Grátis / assinatura'],
+  ['+SBT','Streaming gratuito do SBT com novelas mexicanas clássicas (Rubi, A Desalmada, Rebelde, Carrossel) e o acervo da emissora.','https://www.sbt.com.br/','Grátis · cadastro'],
+  ['ViX','Novelas da Televisa em português e novelas latinas inéditas no Brasil.','https://vix.com/','Grátis com anúncios'],
+  ['Pluto TV','Categoria Novelas com canais 24h, incluindo "Amor de Aluguel by Noverama TV".','https://pluto.tv/','Grátis com anúncios'],
+  ['Samsung TV Plus','Vários canais gratuitos 24h de novelas clássicas, inclusive da TelevisaUnivision e brasileiras dubladas.','https://www.samsungtvplus.com/','Grátis · TVs e celulares Samsung'],
+  ['Telemundo — Series y novelas','Capítulos completos de novelas mexicanas, colombianas, turcas e brasileiras.','https://www.telemundo.com/series-y-novelas/videos','Grátis · em espanhol · pode exigir IP dos EUA'],
+  ['Univision','Os capítulos mais recentes das novelas ficam grátis por três dias.','https://www.univision.com/shows','Grátis · em espanhol'],
+  ['Canela.TV','Novelas e séries da Caracol, RCN, Polka e Atresmedia.','https://www.canela.tv/','Grátis com anúncios · em espanhol'],
+  ['Globoplay','Novelas da Globo e mexicanas dubladas do SBT. Parte do acervo exige assinatura.','https://globoplay.globo.com/','Grátis / assinatura'],
+  ['PlayPlus (Record)','Novelas bíblicas completas: Os Dez Mandamentos, Gênesis, Jesus e outras.','https://www.playplus.com/','Assinatura'],
 ];
+/* Novelas completas em canais oficiais do YouTube (tocam dentro do app) */
+const NOV_YT=[
+  {name:'Noverama TV — todos os capítulos',url:'ytpl:UUTszm6wt7uLhkiPmvThkbAA',groups:['Novela turca dublada'],countryName:'YouTube · Noverama TV'},
+  {name:'Amor de Aluguel (dublada)',url:'ytpl:PLy-dpRAjEvgtHoarDszWXsifzvmeji8EP',groups:['Novela turca dublada'],countryName:'YouTube · Noverama TV'},
+  {name:'Outra Vez Você (dublada)',url:'ytv:HW-AEtjYLkM',groups:['Novela turca dublada'],countryName:'YouTube · Noverama TV'},
+];
+const SPECIAL={
+  novelas:{countries:NOV_COUNTRIES,re:NOV_RE},
+  classicos:{countries:['br','us','pt','mx','ar','es','jp','int'],re:new RegExp([/cartoon|desenho|toons?\b|boomerang|retr[oô]|cl[aá]ssic|nostalg|anos ?(60|70|80|90)|\b(60|70|80|90)s\b|jeannie|feiticeira|tr[eê]s patetas/.source,/toku|sato\+|ultraman|kamen ?rider|sentai|power ?rangers|jaspion|godzilla|kaiju/.source].join('|'),'i')},
+  doramas:{countries:['kr','jp','cn','tw','hk','th','ph','br','us','int'],re:/k-?drama|c-?drama|j-?drama|dorama|asian ?drama|kbs ?world|kbs ?drama|mbc ?drama|sbs ?(drama|plus)|\btvn\b|drama ?(cube|h|max)/i}
+};
+const DOR_C=[['','Todos'],['kr','Coreia do Sul'],['jp','Japão'],['cn','China'],['hk','Hong Kong'],['tw','Taiwan'],['th','Tailândia']];
+const DOR_TERMS={kr:['korea','korean','south korea'],jp:['japan','japanese'],cn:['china','chinese','mandarin'],hk:['hong kong','cantonese'],tw:['taiwan','taiwanese'],th:['thailand','thai']};
+const DOR_LANG={kr:['Korean'],jp:['Japanese'],cn:['Chinese','Mandarin'],hk:['Cantonese'],tw:['Chinese','Mandarin'],th:['Thai']};
+const DOR_PLAT=[
+  ['Rakuten Viki','Plataforma especializada em doramas coreanos, chineses, japoneses e tailandeses, com legendas em português.','https://www.viki.com/','Grátis com anúncios · Viki Pass opcional'],
+  ['Korean Classic Film (YouTube)','Canal oficial do Arquivo de Filmes da Coreia com centenas de filmes coreanos clássicos restaurados e legendados.','https://www.youtube.com/@KoreanFilm','Grátis · oficial'],
+  ['KOCOWA+','K-dramas e reality shows coreanos com episódios pouco depois da exibição na Coreia.','https://www.kocowa.com/','Assinatura'],
+];
+/* Clássicos: desenhos antigos, seriados antigos e tokusatsu */
+const CLS_SECS=[['desenhos','Desenhos antigos'],['seriados','Seriados antigos'],['toku','Tokusatsu']];
+const CLS_TERMS={
+  desenhos:[['','Todos'],['Popeye','Popeye'],['Superman','Superman (Fleischer)'],['Betty Boop','Betty Boop'],['Bugs Bunny','Pernalonga'],['Porky','Gaguinho'],['Daffy','Patolino'],['Woody Woodpecker','Pica-Pau'],['Casper','Gasparzinho'],['Felix','Gato Félix'],['Mighty Mouse','Super Mouse'],['Little Lulu','Luluzinha'],['Raggedy Ann','Raggedy Ann'],['Gulliver','As Viagens de Gulliver'],['Private Snafu','Private Snafu'],['Koko','Koko, o Palhaço']],
+  seriados:[['','Todos'],['Adventures of Superman','As Aventuras do Super-Homem'],['Lone Ranger','Zorro / Lone Ranger'],['Bonanza','Bonanza'],['Three Stooges','Os Três Patetas'],['Flash Gordon','Flash Gordon'],['Dick Tracy','Dick Tracy'],['Lassie','Lassie'],['Andy Griffith','Andy Griffith'],['Beverly Hillbillies','A Família Buscapé'],['Dragnet','Dragnet'],['Cisco Kid','Cisco Kid'],['Sherlock Holmes','Sherlock Holmes'],['Lucy','I Love Lucy'],['Captain Video','Captain Video'],['Space Patrol','Space Patrol']]
+};
+const CLS_IA={desenhos:'collection:(animationandcartoons OR classic_cartoons OR vintage_cartoons OR filmchestvintagecartoons)',
+  seriados:'collection:(classic_tv OR classic_tv_1950s OR classic_tv_1960s OR classic_tv_1970s OR television_inbox) AND mediatype:movies'};
+const CLS_RE={desenhos:/cartoon|desenho|toons?\b|boomerang|anima[cç][aã]o cl|retro ?toon|kids ?classic/i,
+  seriados:/retr[oô]|cl[aá]ssic|nostalg|anos ?(60|70|80|90)|\b(60|70|80|90)s\b|jeannie|feiticeira|tr[eê]s patetas|western|faroeste/i,
+  toku:/toku|sato\+|ultraman|kamen ?rider|sentai|power ?rangers|jaspion|godzilla|kaiju/i};
+const TOKU_PLAT=[
+  ['TokuSato (YouTube)','Canal da Sato Company, dona dos direitos no Brasil, com episódios dublados de séries como Jaspion, Jiraiya, Changeman, Flashman, Jiban e National Kid.','https://www.youtube.com/results?search_query=TokuSato+Sato+Company','Grátis · dublado'],
+  ['Toei Tokusatsu World Official','Canal oficial da Toei no YouTube, com séries clássicas dos anos 60 a 90 legendadas em inglês.','https://www.youtube.com/@toeitokusatsuworldofficial239','Grátis · oficial'],
+  ['Pluto TV','Jaspion dublado grátis com anúncios, além de canais retrô e de tokusatsu.','https://pluto.tv/','Grátis com anúncios'],
+  ['Sato+ (Samsung TV Plus)','Canal gratuito da Sato Company com Jaspion, Jiraiya, animes e filmes asiáticos.','https://www.samsungtvplus.com/','Grátis · TVs Samsung'],
+  ['Mercado Play','Jaspion e outros clássicos em streaming gratuito.','https://www.mercadolivre.com.br/mercadoplay','Grátis'],
+  ['Prime Video','Jaspion, Jiraiya, Changeman, Flashman, Kamen Rider Black RX e outros.','https://www.primevideo.com/','Assinatura'],
+];
+const TOKU_HITS=[
+  ['O Fantástico Jaspion',1985,'TokuSato, Pluto TV, Mercado Play, Prime Video'],
+  ['Esquadrão Relâmpago Changeman',1985,'TokuSato, Prime Video'],
+  ['Comando Estelar Flashman',1986,'TokuSato, Prime Video'],
+  ['Jiraiya, o Incrível Ninja',1988,'TokuSato, Sato+, Prime Video'],
+  ['Jiban, o Policial de Aço',1989,'TokuSato'],
+  ['Kamen Rider Black RX',1988,'TokuSato, Prime Video'],
+  ['Gavan, o Policial do Espaço',1982,'TokuSato, Toei Tokusatsu World'],
+  ['National Kid',1960,'TokuSato, Toei Tokusatsu World'],
+  ['Homem-Aranha japonês (Supaidāman)',1978,'Sem fonte oficial gratuita no momento'],
+];
+/* YouTube ao vivo — canais oficiais das emissoras (ID verificado; @ = só abre no YouTube) */
+const YT=[
+  ['UCvdwhh_fDyWccR42-rReZLw','CNN Brasil','News','Brasil'],
+  ['UCP391YRAjSOdM_bwievgaZA','Jovem Pan News','News','Brasil'],
+  ['UCuiLR4p6wQ3xLEm15pEn1Xw','Record News','News','Brasil'],
+  ['UC376n347Ob5Lwzq2WGzF1AA','SBT News','News','Brasil'],
+  ['UCoa-D_VfMkFrCYodrOC9-mA','Band Jornalismo','News','Brasil'],
+  ['UCSv9d0kQegylHWpP83jWSQg','TV Brasil','General','Brasil'],
+  ['@tvcultura','TV Cultura','General','Brasil'],
+  ['UCLgti7NuK0RuW9wty-fxPjQ','TV Senado','Legislative','Brasil'],
+  ['UC-ZkSRh-7UEuwXJQ9UMCFJA','Câmara dos Deputados','Legislative','Brasil'],
+  ['UCjaWLFTNqLkq3ZY2BJ4NYRg','CanalGov','Legislative','Brasil'],
+  ['UCbiirstEB3KnKhm7i91dKYg','CNN Portugal','News','Portugal'],
+  ['UC_lEiu6917IJz03TnntWUaQ','CNN en Español','News','Internacional'],
+  ['UCUdOoVWuWmgo1wByzcsyKDQ','FRANCE 24 Español','News','Internacional'],
+  ['UCyoGb3SMlTlB8CLGVH4c8Rw','euronews en español','News','Internacional'],
+  ['@dwespanol','DW Español','News','Internacional'],
+  ['UCNye-wNBqNL5ZzHSJj3l8Bg','Al Jazeera English','News','Internacional'],
+  ['UCknLrEdhRCp1aegoMqRaCZg','DW News','News','Internacional'],
+  ['UCQfwfsi5VrQ8yKZ-UWmAEFg','FRANCE 24 English','News','Internacional'],
+  ['UCoMdktPbSTixAyNGwb-UYkQ','Sky News','News','Internacional'],
+  ['UCSrZ3UV4jOidv8ppoVuvW9Q','euronews','News','Internacional'],
+  ['UCBi2mrWuNuyYy4gbM6fU18Q','ABC News','News','Estados Unidos'],
+  ['UC8p1vwvWtl6T73JiExfWs1g','CBS News','News','Estados Unidos'],
+  ['UCJg9wBPyKMNA5sRDnvzmkdg','LiveNOW from FOX','News','Estados Unidos'],
+  ['UCIALMKvObZNtJ6AmdCLP7Lg','Bloomberg Television','Business','Estados Unidos'],
+  ['UC_gUM8rL-Lrg6O3adPW9K1g','WION','News','Índia'],
+  ['UC7fWeaHhqgM4Ry-RMpM2YYw','TRT World','News','Internacional'],
+  ['UCSPEjw8F2nQDtmUKPFNF7_A','NHK WORLD-JAPAN','News','Japão'],
+  ['UCLA_DiR1FfKNvjuUpBHmylQ','NASA','Science','Estados Unidos'],
+  ['UCSJ4gkVC6NrvII8umztf0Ow','Lofi Girl (rádio 24h)','Music','Internacional'],
+];
+const YT_LIVE_FILTER='EgJAAQ%253D%253D';
+let COUNTRY_LIST=[['yt','YouTube ao vivo (emissoras oficiais)'],['all','Mundo inteiro (todos os canais)'],...COUNTRIES];
+async function loadCountryList(){
+  try{const r=await fetch('https://iptv-org.github.io/api/countries.json');const arr=await r.json();
+    let dn=null;try{dn=new Intl.DisplayNames(['pt-BR'],{type:'region'})}catch{}
+    const list=arr.map(c=>{let n=c.name;try{const t=dn&&dn.of(c.code.toUpperCase()==='UK'?'GB':c.code.toUpperCase());if(t&&t.length>2)n=t}catch{}return [c.code.toLowerCase(),n]})
+      .sort((a,b)=>a[1].localeCompare(b[1],'pt-BR'));
+    if(list.length>20){COUNTRY_LIST=[['yt','YouTube ao vivo (emissoras oficiais)'],['all','Mundo inteiro (todos os canais)'],['br','Brasil'],...list.filter(c=>c[0]!=='br'),['int','Internacional (sem país)']];if(S.view==='tv')render()}
+  }catch{}
+}
 /* ---------- estado ---------- */
 const S={view:'tv',country:store.get('al_country','br'),cat:'',tvAll:[],tvShown:60,custom:null,
   vod:{genre:'',decade:'',year:'',sort:'downloads desc',page:1,items:[],total:0,loading:false},
-  nov:{list:null,loading:false,country:''},
+  nov:{list:null,loading:false,country:''},dor:{list:null,loading:false},clsL:{list:null,loading:false},cls:{sec:'desenhos',term:''},
   favs:store.get('al_favs',[]),q:''};
 let hls=null,playingKey='';
 
@@ -166,6 +265,27 @@ let hls=null,playingKey='';
 function stop(){if(hls){hls.destroy();hls=null}$('#screen').querySelectorAll('video,iframe').forEach(e=>e.remove());$('#liveTag').style.display='none'}
 function playLive(ch){
   stop();$('#idle').style.display='none';
+  if(ch.url.startsWith('ytpl:')||ch.url.startsWith('ytv:')){
+    const isPl=ch.url.startsWith('ytpl:'),id=ch.url.slice(isPl?5:4);
+    const f=document.createElement('iframe');f.src=isPl?`https://www.youtube.com/embed/videoseries?list=${encodeURIComponent(id)}`:`https://www.youtube.com/embed/${encodeURIComponent(id)}?autoplay=1`;
+    f.allow='autoplay; fullscreen; encrypted-media; picture-in-picture';f.allowFullscreen=true;$('#screen').append(f);
+    const watch=isPl?`https://www.youtube.com/playlist?list=${id}`:`https://www.youtube.com/watch?v=${id}`;
+    playingKey='tv:'+ch.url;
+    info({title:ch.name,meta:ch.countryName+' — '+ch.groups[0],desc:isPl?'Playlist oficial: use o botão de lista no canto do player para escolher o capítulo.':'Capítulo publicado no canal oficial.',
+      fav:favObj('tv',ch),extra:`<a class="btn" href="${watch}" target="_blank" rel="noopener">Abrir no YouTube</a>`});
+    markPlaying();return;
+  }
+  if(ch.url.startsWith('yt:')||ch.url.startsWith('yth:')){
+    const handle=ch.url.startsWith('yth:')?ch.url.slice(4):'';
+    const watch=handle?`https://www.youtube.com/${handle}/live`:`https://www.youtube.com/channel/${ch.url.slice(3)}/live`;
+    if(handle){$('#idle').style.display='grid';$('#idle').innerHTML=`<div><b>${esc(ch.name)}</b>Este canal só abre no próprio YouTube. <a href="${watch}" target="_blank" rel="noopener">Abrir a transmissão ao vivo</a></div>`}
+    else{const f=document.createElement('iframe');f.src=`https://www.youtube.com/embed/live_stream?channel=${encodeURIComponent(ch.url.slice(3))}&autoplay=1`;f.allow='autoplay; fullscreen; encrypted-media; picture-in-picture';f.allowFullscreen=true;$('#screen').append(f);$('#liveTag').style.display='block'}
+    playingKey='tv:'+ch.url;
+    info({title:ch.name,meta:[ch.countryName,'YouTube ao vivo',CAT_PT[ch.groups[0]]||ch.groups[0]].join(' — '),
+      desc:'Transmissão oficial da emissora no YouTube. Se aparecer "vídeo indisponível", o canal não está ao vivo agora ou não permite exibição fora do YouTube.',
+      fav:favObj('tv',ch),extra:`<a class="btn" href="${watch}" target="_blank" rel="noopener">Abrir no YouTube</a>`});
+    markPlaying();return;
+  }
   const v=document.createElement('video');v.controls=true;v.autoplay=true;v.playsInline=true;$('#screen').append(v);
   $('#liveTag').style.display='block';
   const fail=()=>{$('#idle').style.display='grid';$('#idle').innerHTML='<div><b>Sinal indisponível</b>Este canal não abriu no navegador (fora do ar, bloqueio regional ou proteção do servidor). Tente outro, ou copie o link e abra no VLC.</div>';v.remove();$('#liveTag').style.display='none'};
@@ -182,7 +302,7 @@ function playVod(it,kind){
   stop();$('#idle').style.display='none';
   const f=document.createElement('iframe');f.src='https://archive.org/embed/'+encodeURIComponent(it.id)+'?autoplay=1';f.allow='autoplay; fullscreen';f.allowFullscreen=true;$('#screen').append(f);
   playingKey=kind+':'+it.id;
-  info({title:it.title,meta:[it.year||'Ano desconhecido',kind==='series'?'Série':'Filme'].join(' · '),desc:it.desc,tags:it.subj,fav:favObj(kind,it),
+  info({title:it.title,meta:[it.year||'Ano desconhecido',({series:'Série',classicos:'Clássico',doramas:'Filme asiático'})[kind]||'Filme'].join(' · '),desc:it.desc,tags:it.subj,fav:favObj(kind,it),
     extra:`<a class="btn" href="https://archive.org/details/${encodeURIComponent(it.id)}" target="_blank" rel="noopener">Abrir no Internet Archive</a>`});
   markPlaying();window.scrollTo({top:0,behavior:'smooth'});
 }
@@ -212,27 +332,34 @@ function parseM3U(txt,countryName){
   return out;
 }
 async function loadCountry(code){
-  S.custom=null;S.cat='';S.tvShown=60;S.tvAll=[];renderGrid(true);
-  const name=(COUNTRIES.find(c=>c[0]===code)||[,code])[1];
-  try{const r=await fetch(`https://iptv-org.github.io/iptv/countries/${code}.m3u`);if(!r.ok)throw 0;
+  S.custom=null;S.cat='';S.tvShown=60;S.tvAll=[];
+  if(code==='yt'){
+    S.tvAll=YT.map(([id,name,cat,country])=>({name,logo:'',groups:[cat],countryName:country,url:id.startsWith('@')?'yth:'+id:'yt:'+id}));
+    store.set('al_country',code);if(S.view==='tv')render();return;
+  }
+  renderGrid(true);
+  const name=code==='all'?'':(COUNTRY_LIST.find(c=>c[0]===code)||[,code])[1];
+  const url=code==='all'?'https://iptv-org.github.io/iptv/index.m3u':`https://iptv-org.github.io/iptv/countries/${code}.m3u`;
+  if(code==='all')toast('Carregando todos os canais do mundo, pode levar alguns segundos…');
+  try{const r=await fetch(url);if(!r.ok)throw 0;
     S.tvAll=parseM3U(await r.text(),name);store.set('al_country',code);
   }catch{S.tvAll=[];toast('Não consegui carregar a lista de canais. Verifique a internet.')}
   if(S.view==='tv')render();
 }
-async function loadNovelas(){
-  const N=S.nov;if(N.list||N.loading)return;N.loading=true;renderGrid(true);
-  const res=await Promise.allSettled(NOV_COUNTRIES.map(async code=>{
+async function loadNovelas(view='novelas'){
+  const N=({doramas:S.dor,classicos:S.clsL})[view]||S.nov,cfg=SPECIAL[view];if(N.list||N.loading)return;N.loading=true;if(view==='novelas')renderGrid(true);
+  const res=await Promise.allSettled(cfg.countries.map(async code=>{
     const r=await fetch(`https://iptv-org.github.io/iptv/countries/${code}.m3u`);if(!r.ok)throw 0;
     const name=(COUNTRIES.find(c=>c[0]===code)||[,({do:'Rep. Dominicana',pr:'Porto Rico',pe:'Peru',ve:'Venezuela',ec:'Equador'})[code]||code])[1];
-    return parseM3U(await r.text(),name).filter(c=>NOV_RE.test(c.name)||c.groups.some(g=>NOV_RE.test(g)));
+    return parseM3U(await r.text(),name).filter(c=>cfg.re.test(c.name)||c.groups.some(g=>cfg.re.test(g)));
   }));
   const seen=new Set();N.list=[];
   res.forEach(r=>{if(r.status==='fulfilled')r.value.forEach(c=>{if(!seen.has(c.url)){seen.add(c.url);N.list.push(c)}})});
-  if(!res.some(r=>r.status==='fulfilled'))toast('Não consegui carregar os canais de novela. Verifique a internet.');
-  N.loading=false;if(S.view==='novelas')render();
+  if(!res.some(r=>r.status==='fulfilled'))toast('Não consegui carregar os canais ao vivo. Verifique a internet.');
+  N.loading=false;if(S.view===view){if(view==='novelas')render();else renderGrid(false)}
 }
 function novFiltered(){const q=S.q.toLowerCase();return (S.nov.list||[]).filter(c=>(!S.nov.country||c.countryName===S.nov.country)&&(!q||c.name.toLowerCase().includes(q)))}
-function findLive(url){return S.tvAll.find(c=>c.url===url)||(S.nov.list||[]).find(c=>c.url===url)}
+function findLive(url){return NOV_YT.find(c=>c.url===url)||S.tvAll.find(c=>c.url===url)||(S.nov.list||[]).find(c=>c.url===url)||(S.dor.list||[]).find(c=>c.url===url)||(S.clsL.list||[]).find(c=>c.url===url)}
 function tvFiltered(){const q=S.q.toLowerCase();return S.tvAll.filter(c=>(!S.cat||c.groups.includes(S.cat))&&(!q||c.name.toLowerCase().includes(q)))}
 function tvCard(c){const key='tv:'+c.url;const ini=(c.name.replace(/[^\p{L}\p{N}]/gu,'').slice(0,2).toUpperCase())||'TV';
   return `<div class="card" tabindex="0" data-key="${esc(key)}" data-tv="${esc(c.url)}">
@@ -243,8 +370,18 @@ function tvCard(c){const key='tv:'+c.url;const ini=(c.name.replace(/[^\p{L}\p{N}
 /* ---------- Filmes e séries (Internet Archive) ---------- */
 function iaQuery(){
   const v=S.vod,parts=[];
+  if(S.view==='classicos'){
+    parts.push(CLS_IA[S.cls.sec]||CLS_IA.desenhos);
+    if(S.cls.term)parts.push(`(title:("${S.cls.term}") OR subject:("${S.cls.term}"))`);
+  }else if(S.view==='doramas'){
+    parts.push('collection:(feature_films OR film_noir OR sci-fi_horror OR comedy_films OR feature_films_horror OR foreign_films OR asian_cinema) AND mediatype:movies');
+    const keys=v.dc?[v.dc]:Object.keys(DOR_TERMS);
+    const subj=keys.flatMap(k=>DOR_TERMS[k]).map(t=>`"${t}"`).join(' OR ');
+    const lang=[...new Set(keys.flatMap(k=>DOR_LANG[k]))].join(' OR ');
+    parts.push(`(subject:(${subj} OR "k-drama" OR dorama OR "asian cinema") OR language:(${lang}))`);
+  }else
   parts.push(S.view==='series'?'collection:(classic_tv OR classic_tv_1950s OR classic_tv_1960s OR classic_tv_1970s OR television_inbox) AND mediatype:movies':'collection:(feature_films OR silent_films OR film_noir OR sci-fi_horror OR comedy_films OR classic_cartoons OR feature_films_horror) AND mediatype:movies');
-  if(v.genre)parts.push(`subject:("${v.genre}")`);
+  if(v.genre&&S.view!=='doramas'&&S.view!=='classicos')parts.push(`subject:("${v.genre}")`);
   if(v.year)parts.push(`year:${parseInt(v.year)}`);else if(v.decade)parts.push(`year:[${v.decade} TO ${+v.decade+9}]`);
   if(S.q)parts.push(`(title:(${S.q.replace(/[():"\\]/g,' ')}))`);
   return parts.join(' AND ');
@@ -275,9 +412,13 @@ function render(){
   document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.v===S.view));
   const F=$('#filters'),C=$('#chips');
   if(S.view==='tv'){
-    F.innerHTML=`<div class="filters"><select id="country" aria-label="País">${S.custom?'<option>Minha lista M3U</option>':''}${opt(COUNTRIES,S.custom?'':S.country)}</select>
-      <button class="btn" id="m3uOpen">Importar M3U</button><span class="count" id="count"></span></div>`;
+    F.innerHTML=`<div class="filters"><select id="country" aria-label="País">${S.custom?'<option>Minha lista M3U</option>':''}${opt(COUNTRY_LIST,S.custom?'':S.country)}</select>
+      <button class="btn" id="m3uOpen">Importar M3U</button>
+      ${S.country==='yt'&&!S.custom?`<form id="ytForm" class="row" style="flex:1;min-width:240px"><input id="ytQ" type="search" placeholder="Procurar outras lives no YouTube…" style="flex:1"><button class="btn pri">Buscar no YouTube</button></form>`:''}
+      <span class="count" id="count"></span></div>`;
     $('#country').onchange=e=>{S.country=e.target.value;loadCountry(S.country)};
+    const yf=$('#ytForm');if(yf)yf.onsubmit=e=>{e.preventDefault();const q=$('#ytQ').value.trim()||'ao vivo 24 horas';
+      const a=document.createElement('a');a.href=`https://www.youtube.com/results?search_query=${encodeURIComponent(q)}&sp=${YT_LIVE_FILTER}`;a.target='_blank';a.rel='noopener';document.body.append(a);a.click();a.remove()};
     $('#m3uOpen').onclick=()=>$('#m3uDlg').showModal();
     const counts={};S.tvAll.forEach(c=>c.groups.forEach(g=>counts[g]=(counts[g]||0)+1));
     const cats=Object.keys(counts).sort((a,b)=>counts[b]-counts[a]);
@@ -298,7 +439,24 @@ function render(){
     $('#dec').onchange=e=>{v.decade=e.target.value;v.year='';loadVod(true);render()};
     $('#yr').onchange=e=>{v.year=e.target.value;loadVod(true)};
     $('#sort').onchange=e=>{v.sort=e.target.value;loadVod(true)};
-    C.innerHTML=GENRES.map(([g,l])=>`<button class="chip ${v.genre===g?'on':''}" data-genre="${g}">${l}</button>`).join('');C.hidden=false;
+    if(S.view==='classicos'){
+      const sec=S.cls.sec;
+      F.innerHTML=`<div class="filters"><nav id="clsSec" style="flex-wrap:wrap">${CLS_SECS.map(([k,l])=>`<button data-sec="${k}" class="${sec===k?'on':''}">${l}</button>`).join('')}</nav>
+        ${sec==='toku'?'':`<select id="dec" aria-label="Década">${opt(DECADES,v.decade)}</select>
+        <input id="yr" type="number" inputmode="numeric" min="1890" max="2026" placeholder="Ano exato" value="${esc(v.year)}" style="width:130px">
+        <select id="sort" aria-label="Ordenar">${opt(SORTS,v.sort)}</select>`}<span class="count" id="count"></span></div>`;
+      $('#clsSec').onclick=e=>{const b=e.target.closest('button');if(!b)return;S.cls.sec=b.dataset.sec;S.cls.term='';render();if(S.cls.sec!=='toku')loadVod(true)};
+      if(sec!=='toku'){
+        $('#dec').onchange=e=>{v.decade=e.target.value;v.year='';loadVod(true);render()};
+        $('#yr').onchange=e=>{v.year=e.target.value;loadVod(true)};
+        $('#sort').onchange=e=>{v.sort=e.target.value;loadVod(true)};
+        C.innerHTML=CLS_TERMS[sec].map(([t,l])=>`<button class="chip ${S.cls.term===t?'on':''}" data-term="${esc(t)}">${esc(l)}</button>`).join('');C.hidden=false;
+      }else{C.innerHTML='';C.hidden=true}
+      renderGrid(false);return;
+    }
+    C.innerHTML=S.view==='doramas'
+      ?DOR_C.map(([c,l])=>`<button class="chip ${(v.dc||'')===c?'on':''}" data-dc="${c}">${l}</button>`).join('')
+      :GENRES.map(([g,l])=>`<button class="chip ${v.genre===g?'on':''}" data-genre="${g}">${l}</button>`).join('');C.hidden=false;
   }
   renderGrid(false);
 }
@@ -312,6 +470,8 @@ function renderGrid(loading){
   }else if(S.view==='novelas'){G.className='grid tv';M.hidden=true;
     const plat=`<h3 class="sec">Novelas completas em plataformas oficiais<small>Abrem no site da emissora ou plataforma, em nova aba.</small></h3>
       <div class="plat">${NOV_PLAT.map(([n,d,u,t])=>`<a href="${u}" target="_blank" rel="noopener"><b>${esc(n)}</b><span>${esc(d)}</span><em>${esc(t)}</em></a>`).join('')}</div>
+      <h3 class="sec">Novelas completas no YouTube<small>Capítulos publicados por distribuidoras oficiais. Tocam aqui no app.</small></h3>
+      ${NOV_YT.filter(c=>!S.q||c.name.toLowerCase().includes(S.q.toLowerCase())).map(tvCard).join('')}
       <h3 class="sec">Canais de novela ao vivo<small>Canais 24h de novelas encontrados nas listas públicas de vários países.</small></h3>`;
     if(loading||S.nov.loading){G.innerHTML=plat+Array(8).fill('<div class="skel"></div>').join('');return}
     const list=novFiltered();if(cnt)cnt.textContent=list.length+' canais de novela';
@@ -319,9 +479,34 @@ function renderGrid(loading){
   }else if(S.view==='favs'){G.className='grid vod';
     G.innerHTML=S.favs.length?S.favs.map(f=>f.kind==='tv'?tvCard(f):vodCard(f,f.kind)).join(''):'<div class="empty">Sua lista está vazia. Toque no ♥ de um canal, filme ou série.</div>';M.hidden=true;
   }else{G.className='grid vod';const v=S.vod;
-    if(loading){G.innerHTML=Array(12).fill('<div class="skel" style="height:280px"></div>').join('');M.hidden=true;return}
+    let pre='';
+    if(S.view==='classicos'){
+      const sec=S.cls.sec,q=S.q.toLowerCase();
+      const live=(S.clsL.list||[]).filter(c=>(CLS_RE[sec].test(c.name)||c.groups.some(g=>CLS_RE[sec].test(g)))&&(!q||c.name.toLowerCase().includes(q)));
+      const liveHtml=`<h3 class="sec">Canais ${sec==='toku'?'de tokusatsu':sec==='desenhos'?'de desenhos clássicos':'retrô'} ao vivo<small>${S.clsL.loading?'Procurando canais…':live.length?live.length+' canais encontrados nas listas públicas.':'Nenhum canal desse tipo no ar nas listas agora.'}</small></h3>${live.map(tvCard).join('')}`;
+      if(sec==='toku'){
+        M.hidden=true;if(cnt)cnt.textContent='';
+        const hits=TOKU_HITS.filter(h=>!q||h[0].toLowerCase().includes(q));
+        G.innerHTML=`<h3 class="sec">Onde assistir tokusatsu oficialmente<small>Abrem no site ou canal oficial, em nova aba. As séries têm dono dos direitos, por isso não ficam hospedadas aqui.</small></h3>
+          <div class="plat">${TOKU_PLAT.map(([n,d,u,t])=>`<a href="${u}" target="_blank" rel="noopener"><b>${esc(n)}</b><span>${esc(d)}</span><em>${esc(t)}</em></a>`).join('')}</div>
+          <h3 class="sec">Clássicos que marcaram época<small>Onde cada série estava disponível na última verificação. Toque para buscar no YouTube.</small></h3>
+          <div class="plat">${hits.map(([n,y,w])=>`<a href="https://www.youtube.com/results?search_query=${encodeURIComponent(n+' episódio completo oficial')}" target="_blank" rel="noopener"><b>${esc(n)}</b><span>${y} · ${esc(w)}</span></a>`).join('')}</div>
+          ${liveHtml}`;
+        markPlaying();return;
+      }
+      pre=liveHtml+`<h3 class="sec">${sec==='desenhos'?'Desenhos animados antigos':'Seriados antigos'} em domínio público<small>Acervo do Internet Archive, com toque para assistir aqui. Filtre por personagem, década ou ano.</small></h3>`;
+    }
+    if(S.view==='doramas'){
+      const live=(S.dor.list||[]).filter(c=>!S.q||c.name.toLowerCase().includes(S.q.toLowerCase()));
+      pre=`<h3 class="sec">Doramas completos em plataformas oficiais<small>Abrem no site da plataforma, em nova aba.</small></h3>
+        <div class="plat">${DOR_PLAT.map(([n,d,u,t])=>`<a href="${u}" target="_blank" rel="noopener"><b>${esc(n)}</b><span>${esc(d)}</span><em>${esc(t)}</em></a>`).join('')}</div>
+        <h3 class="sec">Canais de dorama ao vivo<small>${S.dor.loading?'Procurando canais…':live.length?live.length+' canais encontrados nas listas públicas.':'Nenhum canal de dorama no ar nas listas agora.'}</small></h3>
+        ${live.map(tvCard).join('')}
+        <h3 class="sec">Filmes asiáticos em domínio público<small>Acervo do Internet Archive. Filtre por país, década ou ano.</small></h3>`;
+    }
+    if(loading){G.innerHTML=pre+Array(12).fill('<div class="skel" style="height:280px"></div>').join('');M.hidden=true;return}
     if(cnt)cnt.textContent=v.total?v.total.toLocaleString('pt-BR')+' títulos':'';
-    G.innerHTML=v.items.length?v.items.map(i=>vodCard(i,S.view)).join(''):(v.loading?'':'<div class="empty">Nada encontrado com esses filtros. Experimente outra década ou categoria.</div>');
+    G.innerHTML=pre+(v.items.length?v.items.map(i=>vodCard(i,S.view)).join(''):(v.loading?'':`<div class="empty">Nada encontrado com esses filtros. ${S.view==='doramas'?'Para filmes coreanos clássicos, veja o canal Korean Classic Film acima.':'Experimente outra década ou categoria.'}</div>`));
     M.hidden=v.items.length>=v.total||!v.items.length;M.textContent=v.loading?'Carregando…':'Carregar mais';
   }
   markPlaying();
@@ -329,13 +514,16 @@ function renderGrid(loading){
 
 /* ---------- eventos ---------- */
 $('#tabs').onclick=e=>{const b=e.target.closest('button');if(!b)return;S.view=b.dataset.v;
-  if((S.view==='filmes'||S.view==='series')){render();loadVod(true)}else{render();if(S.view==='novelas')loadNovelas()}};
+  if(S.view==='classicos'){render();if(S.cls.sec!=='toku')loadVod(true);loadNovelas('classicos')}
+  else if((S.view==='filmes'||S.view==='series'||S.view==='doramas')){render();loadVod(true);if(S.view==='doramas')loadNovelas('doramas')}else{render();if(S.view==='novelas')loadNovelas()}};
 $('#chips').onclick=e=>{const b=e.target.closest('.chip');if(!b)return;
   if(S.view==='novelas'){S.nov.country=b.dataset.nc;render()}
+  else if(S.view==='doramas'){S.vod.dc=b.dataset.dc;render();loadVod(true)}
+  else if(S.view==='classicos'){S.cls.term=b.dataset.term;render();loadVod(true)}
   else if(S.view==='tv'){S.cat=b.dataset.cat;S.tvShown=60;render()}else{S.vod.genre=b.dataset.genre;render();loadVod(true)}};
 $('#more').onclick=()=>{if(S.view==='tv'){S.tvShown+=60;renderGrid(false)}else{S.vod.page++;loadVod(false)}};
 let qt;$('#q').oninput=e=>{clearTimeout(qt);qt=setTimeout(()=>{S.q=e.target.value.trim();
-  if(S.view==='tv'||S.view==='novelas'){S.tvShown=60;renderGrid(false)}else if(S.view!=='favs')loadVod(true)},350)};
+  if(S.view==='tv'||S.view==='novelas'||(S.view==='classicos'&&S.cls.sec==='toku')){S.tvShown=60;renderGrid(false)}else if(S.view!=='favs')loadVod(true)},350)};
 function findFav(k){return S.favs.find(f=>f.key===k)}
 function openCard(card){
   if(card.dataset.tv){const url=card.dataset.tv;const ch=findLive(url)||findFav('tv:'+url);if(ch)playLive(ch)}
@@ -361,7 +549,7 @@ $('#m3uGo').onclick=async()=>{
   S.custom=true;S.tvAll=list;S.cat='';S.tvShown=60;$('#m3uDlg').close();S.view='tv';render();toast(list.length+' canais importados');
 };
 
-render();loadCountry(S.country);
+render();loadCountry(S.country);loadCountryList();
 }
 </script>
 </body>
