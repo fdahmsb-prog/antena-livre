@@ -25,6 +25,14 @@ App web para assistir **canais de TV ao vivo** (nacionais e internacionais), **f
 
 O app não hospeda nenhum vídeo; ele só exibe conteúdo de fontes públicas.
 
+## Instalar como app
+
+O Antena Livre é um PWA: depois de publicado no Vercel (HTTPS), dá para instalar.
+
+- **Android (Chrome)**: botão **Instalar app** no topo, ou menu ⋮ → *Instalar app*.
+- **iPhone/iPad (Safari)**: Compartilhar → *Adicionar à Tela de Início*.
+- **Computador (Chrome ou Edge)**: botão **Instalar app** no topo, ou o ícone de instalar na barra de endereço.
+
 ## Rodar localmente
 
 Abra o `index.html` no navegador. Para evitar bloqueios de alguns sinais, prefira servir por HTTP:

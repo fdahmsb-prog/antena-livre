@@ -4,6 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Antena Livre</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#0a1417">
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Antena Livre">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -103,7 +111,13 @@ dialog textarea{width:100%;min-height:120px;background:var(--bg);border:1px soli
     <button data-v="favs">Minha lista</button>
   </nav>
   <div class="search"><input id="q" type="search" placeholder="Buscar canal, filme ou série…" autocomplete="off"></div>
+  <button class="btn pri" id="installBtn" hidden>Instalar app</button>
 </div></header>
+<dialog id="iosDlg">
+  <h2 style="font:700 20px Archivo;margin:0 0 8px">Instalar no iPhone ou iPad</h2>
+  <p style="margin:0 0 14px;color:var(--mute)">No Safari, toque no botão <b>Compartilhar</b> (o quadrado com a seta para cima) e depois em <b>Adicionar à Tela de Início</b>.</p>
+  <button class="btn pri" id="iosOk">Entendi</button>
+</dialog>
 
 <main>
   <section class="stage">
@@ -550,6 +564,20 @@ $('#m3uGo').onclick=async()=>{
 };
 
 render();loadCountry(S.country);loadCountryList();
+
+/* ---------- instalação como app (PWA) ---------- */
+if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('/sw.js').catch(()=>{});
+let deferredPrompt=null;
+const standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone;
+const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;if(!standalone)$('#installBtn').hidden=false});
+if(isIOS&&!standalone)$('#installBtn').hidden=false;
+$('#installBtn').onclick=async()=>{
+  if(deferredPrompt){deferredPrompt.prompt();const r=await deferredPrompt.userChoice;deferredPrompt=null;if(r.outcome==='accepted')$('#installBtn').hidden=true}
+  else if(isIOS)$('#iosDlg').showModal();
+};
+$('#iosOk').onclick=()=>$('#iosDlg').close();
+window.addEventListener('appinstalled',()=>{$('#installBtn').hidden=true;toast('Antena Livre instalado!')});
 }
 </script>
 </body>
