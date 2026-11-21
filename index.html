@@ -285,19 +285,20 @@ const YT=[
   ['UCSJ4gkVC6NrvII8umztf0Ow','Lofi Girl (rádio 24h)','Music','Internacional'],
 ];
 const YT_LIVE_FILTER='EgJAAQ%253D%253D';
-let COUNTRY_LIST=[['yt','YouTube ao vivo (emissoras oficiais)'],['all','Mundo inteiro (todos os canais)'],...COUNTRIES];
+let COUNTRY_LIST=[['youtube','YouTube ao vivo (emissoras oficiais)'],['all','Mundo inteiro (todos os canais)'],...COUNTRIES];
 async function loadCountryList(){
   try{const r=await fetch('https://iptv-org.github.io/api/countries.json');const arr=await r.json();
     let dn=null;try{dn=new Intl.DisplayNames(['pt-BR'],{type:'region'})}catch{}
     const list=arr.map(c=>{let n=c.name;try{const t=dn&&dn.of(c.code.toUpperCase()==='UK'?'GB':c.code.toUpperCase());if(t&&t.length>2)n=t}catch{}return [c.code.toLowerCase(),n]})
       .sort((a,b)=>a[1].localeCompare(b[1],'pt-BR'));
-    if(list.length>20){COUNTRY_LIST=[['yt','YouTube ao vivo (emissoras oficiais)'],['all','Mundo inteiro (todos os canais)'],['br','Brasil'],...list.filter(c=>c[0]!=='br'),['int','Internacional (sem país)']];if(S.view==='tv')render()}
+    if(list.length>20){COUNTRY_LIST=[['youtube','YouTube ao vivo (emissoras oficiais)'],['all','Mundo inteiro (todos os canais)'],['br','Brasil'],...list.filter(c=>c[0]!=='br'),['int','Internacional (sem país)']];if(S.view==='tv')render()}
   }catch{}
 }
 /* ---------- estado ---------- */
-const S={view:'tv',country:store.get('al_country','br'),cat:'',tvAll:[],tvShown:60,custom:null,
+const S={view:'tv',country:(c=>c==='yt'?'youtube':c)(store.get('al_country','br')),cat:'',tvAll:[],tvShown:60,custom:null,
   vod:{genre:'',decade:'',year:'',sort:'downloads desc',page:1,items:[],total:0,loading:false},
   nov:{list:null,loading:false,country:''},dor:{list:null,loading:false},clsL:{list:null,loading:false},cls:{sec:'desenhos',term:''},
+  showHttp:store.get('al_http',false),
   favs:store.get('al_favs',[]),q:''};
 let hls=null,playingKey='';
 
@@ -318,8 +319,16 @@ function playLive(ch){
   if(ch.url.startsWith('yt:')||ch.url.startsWith('yth:')){
     const handle=ch.url.startsWith('yth:')?ch.url.slice(4):'';
     const watch=handle?`https://www.youtube.com/${handle}/live`:`https://www.youtube.com/channel/${ch.url.slice(3)}/live`;
-    if(handle){$('#idle').style.display='grid';$('#idle').innerHTML=`<div><b>${esc(ch.name)}</b>Este canal só abre no próprio YouTube. <a href="${watch}" target="_blank" rel="noopener">Abrir a transmissão ao vivo</a></div>`}
-    else{const f=document.createElement('iframe');f.src=`https://www.youtube.com/embed/live_stream?channel=${encodeURIComponent(ch.url.slice(3))}&autoplay=1`;f.allow='autoplay; fullscreen; encrypted-media; picture-in-picture';f.allowFullscreen=true;$('#screen').append(f);$('#liveTag').style.display='block'}
+    const myKey='tv:'+ch.url;
+    $('#idle').style.display='grid';$('#idle').innerHTML=`<div><b>${esc(ch.name)}</b>Procurando a transmissão ao vivo…</div>`;
+    const embed=src=>{if(playingKey!==myKey)return;$('#idle').style.display='none';const f=document.createElement('iframe');f.src=src;f.allow='autoplay; fullscreen; encrypted-media; picture-in-picture';f.allowFullscreen=true;$('#screen').append(f);$('#liveTag').style.display='block'};
+    const q=handle?'handle='+encodeURIComponent(handle):'channel='+encodeURIComponent(ch.url.slice(3));
+    fetch('/api/ytlive?'+q).then(r=>r.ok?r.json():Promise.reject()).then(d=>{
+      if(d.videoId&&d.embeddable===false){if(playingKey===myKey)$('#idle').innerHTML=`<div><b>${esc(ch.name)}</b>A emissora não permite exibir esta live fora do YouTube. <a href="https://www.youtube.com/watch?v=${d.videoId}" target="_blank" rel="noopener">Assistir no YouTube</a></div>`}
+      else if(d.videoId)embed(`https://www.youtube.com/embed/${d.videoId}?autoplay=1`);
+      else if(playingKey===myKey){$('#idle').innerHTML=`<div><b>${esc(ch.name)}</b>O canal não está transmitindo ao vivo agora. <a href="${watch}" target="_blank" rel="noopener">Ver no YouTube</a></div>`}
+    }).catch(()=>{ if(handle){ if(playingKey===myKey)$('#idle').innerHTML=`<div><b>${esc(ch.name)}</b><a href="${watch}" target="_blank" rel="noopener">Abrir a transmissão no YouTube</a></div>` }
+      else embed(`https://www.youtube.com/embed/live_stream?channel=${encodeURIComponent(ch.url.slice(3))}&autoplay=1`) });
     playingKey='tv:'+ch.url;
     info({title:ch.name,meta:[ch.countryName,'YouTube ao vivo',CAT_PT[ch.groups[0]]||ch.groups[0]].join(' — '),
       desc:'Transmissão oficial da emissora no YouTube. Se aparecer "vídeo indisponível", o canal não está ao vivo agora ou não permite exibição fora do YouTube.',
@@ -373,7 +382,7 @@ function parseM3U(txt,countryName){
 }
 async function loadCountry(code){
   S.custom=null;S.cat='';S.tvShown=60;S.tvAll=[];
-  if(code==='yt'){
+  if(code==='youtube'){
     S.tvAll=YT.map(([id,name,cat,country])=>({name,logo:'',groups:[cat],countryName:country,url:id.startsWith('@')?'yth:'+id:'yt:'+id}));
     store.set('al_country',code);if(S.view==='tv')render();return;
   }
@@ -398,9 +407,10 @@ async function loadNovelas(view='novelas'){
   if(!res.some(r=>r.status==='fulfilled'))toast('Não consegui carregar os canais ao vivo. Verifique a internet.');
   N.loading=false;if(S.view===view){if(view==='novelas')render();else renderGrid(false)}
 }
-function novFiltered(){const q=S.q.toLowerCase();return (S.nov.list||[]).filter(c=>(!S.nov.country||c.countryName===S.nov.country)&&(!q||c.name.toLowerCase().includes(q)))}
+function playable(c){return S.showHttp||location.protocol!=='https:'||!/^http:\/\//i.test(c.url)}
+function novFiltered(){const q=S.q.toLowerCase();return (S.nov.list||[]).filter(c=>playable(c)&&(!S.nov.country||c.countryName===S.nov.country)&&(!q||c.name.toLowerCase().includes(q)))}
 function findLive(url){return NOV_YT.find(c=>c.url===url)||S.tvAll.find(c=>c.url===url)||(S.nov.list||[]).find(c=>c.url===url)||(S.dor.list||[]).find(c=>c.url===url)||(S.clsL.list||[]).find(c=>c.url===url)}
-function tvFiltered(){const q=S.q.toLowerCase();return S.tvAll.filter(c=>(!S.cat||c.groups.includes(S.cat))&&(!q||c.name.toLowerCase().includes(q)))}
+function tvFiltered(){const q=S.q.toLowerCase();return S.tvAll.filter(c=>playable(c)&&(!S.cat||c.groups.includes(S.cat))&&(!q||c.name.toLowerCase().includes(q)))}
 function tvCard(c){const key='tv:'+c.url;const ini=(c.name.replace(/[^\p{L}\p{N}]/gu,'').slice(0,2).toUpperCase())||'TV';
   return `<div class="card" tabindex="0" data-key="${esc(key)}" data-tv="${esc(c.url)}">
     <button class="fav ${S.favs.some(f=>f.key===key)?'on':''}" data-key="${esc(key)}" aria-label="Favoritar">♥</button>
@@ -454,15 +464,17 @@ function render(){
   if(S.view==='tv'){
     F.innerHTML=`<div class="filters"><select id="country" aria-label="País">${S.custom?'<option>Minha lista M3U</option>':''}${opt(COUNTRY_LIST,S.custom?'':S.country)}</select>
       <button class="btn" id="m3uOpen">Importar M3U</button>
-      ${S.country==='yt'&&!S.custom?`<form id="ytForm" class="row" style="flex:1;min-width:240px"><input id="ytQ" type="search" placeholder="Procurar outras lives no YouTube…" style="flex:1"><button class="btn pri">Buscar no YouTube</button></form>`:''}
+      ${location.protocol==='https:'&&S.country!=='youtube'?`<label class="row" style="align-items:center;gap:6px;font-size:14px;color:var(--mute)"><input type="checkbox" id="httpChk" ${S.showHttp?'checked':''} style="width:20px;height:20px;min-height:0"> Mostrar também canais sem https (${S.tvAll.filter(c=>/^http:\/\//i.test(c.url)).length}, quase sempre não abrem aqui)</label>`:''}
+      ${S.country==='youtube'&&!S.custom?`<form id="ytForm" class="row" style="flex:1;min-width:240px"><input id="ytQ" type="search" placeholder="Procurar outras lives no YouTube…" style="flex:1"><button class="btn pri">Buscar no YouTube</button></form>`:''}
       <span class="count" id="count"></span></div>`;
     $('#country').onchange=e=>{S.country=e.target.value;loadCountry(S.country)};
     const yf=$('#ytForm');if(yf)yf.onsubmit=e=>{e.preventDefault();const q=$('#ytQ').value.trim()||'ao vivo 24 horas';
       const a=document.createElement('a');a.href=`https://www.youtube.com/results?search_query=${encodeURIComponent(q)}&sp=${YT_LIVE_FILTER}`;a.target='_blank';a.rel='noopener';document.body.append(a);a.click();a.remove()};
     $('#m3uOpen').onclick=()=>$('#m3uDlg').showModal();
-    const counts={};S.tvAll.forEach(c=>c.groups.forEach(g=>counts[g]=(counts[g]||0)+1));
+    const hc=$('#httpChk');if(hc)hc.onchange=e=>{S.showHttp=e.target.checked;store.set('al_http',S.showHttp);S.tvShown=60;render()};
+    const counts={};const pl=S.tvAll.filter(playable);pl.forEach(c=>c.groups.forEach(g=>counts[g]=(counts[g]||0)+1));
     const cats=Object.keys(counts).sort((a,b)=>counts[b]-counts[a]);
-    C.innerHTML=[`<button class="chip ${!S.cat?'on':''}" data-cat="">Todos · ${S.tvAll.length}</button>`,...cats.map(c=>`<button class="chip ${S.cat===c?'on':''}" data-cat="${esc(c)}">${esc(CAT_PT[c]||c)} · ${counts[c]}</button>`)].join('');
+    C.innerHTML=[`<button class="chip ${!S.cat?'on':''}" data-cat="">Todos · ${pl.length}</button>`,...cats.map(c=>`<button class="chip ${S.cat===c?'on':''}" data-cat="${esc(c)}">${esc(CAT_PT[c]||c)} · ${counts[c]}</button>`)].join('');
     C.hidden=false;
   }else if(S.view==='favs'){F.innerHTML='';C.innerHTML='';C.hidden=true}
   else if(S.view==='novelas'){
@@ -522,7 +534,7 @@ function renderGrid(loading){
     let pre='';
     if(S.view==='classicos'){
       const sec=S.cls.sec,q=S.q.toLowerCase();
-      const live=(S.clsL.list||[]).filter(c=>(CLS_RE[sec].test(c.name)||c.groups.some(g=>CLS_RE[sec].test(g)))&&(!q||c.name.toLowerCase().includes(q)));
+      const live=(S.clsL.list||[]).filter(c=>playable(c)&&(CLS_RE[sec].test(c.name)||c.groups.some(g=>CLS_RE[sec].test(g)))&&(!q||c.name.toLowerCase().includes(q)));
       const liveHtml=`<h3 class="sec">Canais ${sec==='toku'?'de tokusatsu':sec==='desenhos'?'de desenhos clássicos':'retrô'} ao vivo<small>${S.clsL.loading?'Procurando canais…':live.length?live.length+' canais encontrados nas listas públicas.':'Nenhum canal desse tipo no ar nas listas agora.'}</small></h3>${live.map(tvCard).join('')}`;
       if(sec==='toku'){
         M.hidden=true;if(cnt)cnt.textContent='';
@@ -537,7 +549,7 @@ function renderGrid(loading){
       pre=liveHtml+`<h3 class="sec">${sec==='desenhos'?'Desenhos animados antigos':'Seriados antigos'} em domínio público<small>Acervo do Internet Archive, com toque para assistir aqui. Filtre por personagem, década ou ano.</small></h3>`;
     }
     if(S.view==='doramas'){
-      const live=(S.dor.list||[]).filter(c=>!S.q||c.name.toLowerCase().includes(S.q.toLowerCase()));
+      const live=(S.dor.list||[]).filter(c=>playable(c)&&!S.q||c.name.toLowerCase().includes(S.q.toLowerCase()));
       pre=`<h3 class="sec">Doramas completos em plataformas oficiais<small>Abrem no site da plataforma, em nova aba.</small></h3>
         <div class="plat">${DOR_PLAT.map(([n,d,u,t])=>`<a href="${u}" target="_blank" rel="noopener"><b>${esc(n)}</b><span>${esc(d)}</span><em>${esc(t)}</em></a>`).join('')}</div>
         <h3 class="sec">Canais de dorama ao vivo<small>${S.dor.loading?'Procurando canais…':live.length?live.length+' canais encontrados nas listas públicas.':'Nenhum canal de dorama no ar nas listas agora.'}</small></h3>
