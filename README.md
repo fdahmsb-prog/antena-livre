@@ -14,6 +14,9 @@ App web para assistir **canais de TV ao vivo** (nacionais e internacionais), **f
   - *Seriados antigos* em domínio público (As Aventuras do Super-Homem, Lone Ranger, Bonanza, Três Patetas, Flash Gordon…);
   - *Tokusatsu*: onde assistir oficialmente Jaspion, Jiraiya, Changeman, Flashman, Jiban, Kamen Rider Black RX, Gavan, National Kid e outros (TokuSato, Toei Tokusatsu World, Pluto TV, Sato+, Mercado Play, Prime Video);
   - canais retrô, de desenhos e de tokusatsu ao vivo.
+- **Dublados**: últimos filmes e desenhos dublados publicados por canais oficiais e distribuidoras no YouTube (Film Plus, Canal Eba!, NetMovies, Europa Filmes, O2 Play, Cinemateca Brasileira, Turma da Mônica), tocando no app, e atalhos para plataformas gratuitas (Pluto TV, Mercado Play, +SBT, Plex, iNNova TV, Tela Brasil, Itaú Cultural Play, Spcine Play, Sesc Digital, Bandplay).
+- **Clipes**: clipes de música por gênero (sertanejo, funk, pagode, MPB, gospel, rock, pop, K-pop, anos 80/90…) e busca por artista; selo OFICIAL para canais de artista verificados.
+- **Rádios**: rádios web do mundo todo pelo diretório aberto Radio Browser, com filtro por país, estado e gênero.
 - **Minha lista**: favoritos guardados no navegador.
 - **Importar M3U**: carregue a lista do seu provedor de TV (por URL ou arquivo).
 - Busca, layout responsivo (celular e computador) e player HLS (hls.js).
@@ -38,6 +41,12 @@ O Antena Livre é um PWA: depois de publicado no Vercel (HTTPS), dá para instal
 Liga sozinho em TVs (Google TV, Android TV, Fire TV, webOS, Tizen) e também pelo botão **Modo TV** no topo.
 Setas do controle para navegar, **OK** para abrir, **OK no vídeo** para tela cheia e **Voltar** para sair.
 Na TV TCL com Google TV: instale um navegador como o TV Bro pela Play Store e abra o endereço do app.
+
+## Funções do servidor (pasta `api/`)
+
+- `api/ytlive.js`: acha a transmissão ao vivo atual de um canal do YouTube.
+- `api/ytfeed.js`: lista os últimos vídeos de um canal (feed RSS oficial do YouTube).
+- `api/ytsearch.js`: busca de clipes no YouTube.
 
 ## Rodar localmente
 

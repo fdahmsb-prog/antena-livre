@@ -77,6 +77,17 @@ select,.filters input{background:var(--panel);border:1px solid var(--line);borde
 .fav{position:absolute;top:6px;left:6px;width:34px;height:34px;border-radius:50%;border:0;background:rgba(0,0,0,.6);cursor:pointer;font-size:17px;line-height:1;color:#fff}
 .fav.on{color:var(--on)}
 .more{display:block;margin:20px auto 0}
+.vthumb{aspect-ratio:16/9;background:#0d1a1d center/cover no-repeat;position:relative}
+.vthumb .dur{position:absolute;right:6px;bottom:6px;background:rgba(0,0,0,.8);font:600 12px Inter;padding:2px 6px;border-radius:4px}
+.badge-of{display:inline-block;font-size:11px;font-weight:700;color:#04211d;background:var(--sup);border-radius:4px;padding:1px 5px;margin-right:4px}
+.radio-ui{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:20px;background:radial-gradient(ellipse at 50% 30%,#1b3a3f 0,#061013 75%)}
+.radio-ui img{width:120px;height:120px;object-fit:contain;border-radius:18px;background:#0d1a1d;padding:10px;margin:0 auto 12px;display:block}
+.radio-ui b{display:block;font:700 24px/1.2 Archivo;margin-bottom:6px}
+.radio-ui audio{width:min(420px,90%);margin-top:14px}
+.eq{display:inline-flex;gap:3px;height:22px;align-items:flex-end;margin-bottom:8px}.eq i{width:5px;background:var(--on);animation:eq 1s infinite ease-in-out}
+.eq i:nth-child(2){animation-delay:.2s}.eq i:nth-child(3){animation-delay:.4s}.eq i:nth-child(4){animation-delay:.1s}
+@keyframes eq{0%,100%{height:5px}50%{height:22px}}
+@media(prefers-reduced-motion:reduce){.eq i{animation:none;height:12px}}
 .sec{grid-column:1/-1;font:700 19px/1.2 Archivo;margin:10px 0 0}
 .sec small{display:block;font:400 14px/1.4 Inter;color:var(--mute);margin-top:4px}
 .plat{grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-bottom:8px}
@@ -132,6 +143,9 @@ body.tvmode .tvhint{display:block;width:100%}
     <button data-v="novelas">Novelas</button>
     <button data-v="doramas">Doramas</button>
     <button data-v="classicos">Clássicos</button>
+    <button data-v="dublados">Dublados</button>
+    <button data-v="musica">Clipes</button>
+    <button data-v="radios">Rádios</button>
     <button data-v="favs">Minha lista</button>
   </nav>
   <div class="search"><input id="q" type="search" placeholder="Buscar canal, filme ou série…" autocomplete="off"></div>
@@ -193,7 +207,7 @@ const SORTS=[['downloads desc','Mais assistidos'],['year desc','Mais recentes'],
 const NOV_COUNTRIES=['br','pt','mx','ar','co','us','es','cl','pe','ve','ec','do','pr','int'];
 const NOV_RE=/novela|telenovela|tlnovela|teleno|dizi|turcas?\b|turkish drama|melodrama/i;
 const NOV_PLAT=[
-  ['+SBT','Streaming gratuito do SBT com novelas mexicanas clássicas (Rubi, A Desalmada, Rebelde, Carrossel) e o acervo da emissora.','https://www.sbt.com.br/','Grátis · cadastro'],
+  ['+SBT','Streaming gratuito do SBT com novelas mexicanas clássicas (Rubi, A Desalmada, Rebelde, Carrossel) e o acervo da emissora.','https://mais.sbt.com.br/','Grátis · cadastro'],
   ['ViX','Novelas da Televisa em português e novelas latinas inéditas no Brasil.','https://vix.com/','Grátis com anúncios'],
   ['Pluto TV','Categoria Novelas com canais 24h, incluindo "Amor de Aluguel by Noverama TV".','https://pluto.tv/','Grátis com anúncios'],
   ['Samsung TV Plus','Vários canais gratuitos 24h de novelas clássicas, inclusive da TelevisaUnivision e brasileiras dubladas.','https://www.samsungtvplus.com/','Grátis · TVs e celulares Samsung'],
@@ -294,17 +308,45 @@ async function loadCountryList(){
     if(list.length>20){COUNTRY_LIST=[['youtube','YouTube ao vivo (emissoras oficiais)'],['all','Mundo inteiro (todos os canais)'],['br','Brasil'],...list.filter(c=>c[0]!=='br'),['int','Internacional (sem país)']];if(S.view==='tv')render()}
   }catch{}
 }
+/* Dublados: canais oficiais/licenciados no YouTube com filmes e desenhos em português */
+const DUB_CH=[
+  ['UCXi7MtdQ4JeEQN9CQ-w9syA','Film Plus','Filmes dublados'],
+  ['UCe6NBXI7ym6TddPh0gEfBvw','Canal Eba!','Filmes dublados'],
+  ['UCK5RRQ3TdwAbbCWrtnXsN3Q','NetMovies','Filmes dublados'],
+  ['UCxXVNGnoLYuHaudSjm_-lhw','Europa Filmes','Filmes nacionais e dublados'],
+  ['UCbtN1yp6fe3jkjLLKVVV4Zw','O2 Play','Filmes nacionais'],
+  ['UCdQR_Hm_hQxHE_to8N_82Mw','Cinemateca Brasileira','Clássicos nacionais'],
+  ['UCV4XcEqBswMCryorV_gNENw','Turma da Mônica','Desenhos'],
+];
+const DUB_PLAT=[
+  ['Pluto TV','Mais de 100 canais ao vivo e catálogo sob demanda com filmes, séries e desenhos dublados.','https://pluto.tv/','Grátis com anúncios'],
+  ['Mercado Play','Filmes e séries dublados; use o filtro "gratuito".','https://play.mercadolivre.com.br/filtrar/gratuito','Grátis / pago'],
+  ['+SBT','Filmes, séries e desenhos do acervo do SBT (Smurfs, Shaun, o Carneiro e outros).','https://mais.sbt.com.br/','Grátis'],
+  ['Plex','Filmes e séries grátis sob demanda, muitos dublados.','https://www.plex.tv/','Grátis com anúncios'],
+  ['iNNova TV','Filmes e séries grátis com anúncios.','https://innova.tv.br/','Grátis · cadastro'],
+  ['Tela Brasil','Streaming público do audiovisual brasileiro.','https://telabrasil.cultura.gov.br/','Grátis · login gov.br'],
+  ['Itaú Cultural Play','Filmes e séries brasileiros.','https://www.itauculturalplay.com.br/','Grátis · cadastro'],
+  ['Spcine Play','Produções brasileiras e seleções de festivais.','https://www.spcineplay.com.br/','Grátis'],
+  ['Sesc Digital','Filmes com curadoria, alguns grátis por tempo limitado.','https://sesc.digital/','Grátis'],
+  ['Bandplay','Parte da programação da Band grátis.','https://bandplay.com/','Grátis / assinatura'],
+];
+const MUS_GENRES=[['','Em alta'],['sertanejo','Sertanejo'],['funk','Funk'],['pagode','Pagode'],['samba','Samba'],['forró piseiro','Forró e piseiro'],['MPB','MPB'],['gospel','Gospel'],['rock nacional','Rock nacional'],['pop brasileiro','Pop nacional'],['rap trap nacional','Rap e trap'],['arrocha','Arrocha'],['brega funk','Brega funk'],['axé','Axé'],['pop internacional','Pop internacional'],['rock internacional','Rock internacional'],['reggaeton latino','Latina'],['k-pop','K-pop'],['anos 80','Anos 80'],['anos 90','Anos 90'],['eletrônica','Eletrônica'],['infantil','Infantil']];
+const RADIO_TAGS=[['','Mais ouvidas'],['news','Notícias'],['talk','Falada'],['sertanejo','Sertanejo'],['gospel','Gospel'],['pop','Pop'],['rock','Rock'],['mpb','MPB'],['samba','Samba'],['pagode','Pagode'],['forro','Forró'],['funk','Funk'],['electronic','Eletrônica'],['jazz','Jazz'],['classical','Clássica'],['80s','Anos 80'],['90s','Anos 90'],['sports','Esportes'],['catholic','Católica'],['lofi','Lofi']];
+const RADIO_C=[['BR','Brasil'],['PT','Portugal'],['US','Estados Unidos'],['GB','Reino Unido'],['ES','Espanha'],['AR','Argentina'],['MX','México'],['FR','França'],['DE','Alemanha'],['IT','Itália'],['JP','Japão'],['','Mundo todo']];
+const RB_HOSTS=['https://de1.api.radio-browser.info','https://nl1.api.radio-browser.info','https://at1.api.radio-browser.info','https://de2.api.radio-browser.info'];
 /* ---------- estado ---------- */
 const S={view:'tv',country:(c=>c==='yt'?'youtube':c)(store.get('al_country','br')),cat:'',tvAll:[],tvShown:60,custom:null,
   vod:{genre:'',decade:'',year:'',sort:'downloads desc',page:1,items:[],total:0,loading:false},
   nov:{list:null,loading:false,country:''},dor:{list:null,loading:false},clsL:{list:null,loading:false},cls:{sec:'desenhos',term:''},
   showHttp:store.get('al_http',false),
+  ytv:{items:[],loading:false,dub:'',mus:''},rad:{items:[],loading:false,tag:'',cc:store.get('al_rcc','BR'),state:''},
   favs:store.get('al_favs',[]),q:''};
 let hls=null,playingKey='';
 
 /* ---------- player ---------- */
 function stop(){if(hls){hls.destroy();hls=null}$('#screen').querySelectorAll('video,iframe').forEach(e=>e.remove());$('#liveTag').style.display='none'}
 function playLive(ch){
+  if(ch.url.startsWith('radio:'))return playRadio(ch);
   stop();$('#idle').style.display='none';
   if(ch.url.startsWith('ytpl:')||ch.url.startsWith('ytv:')){
     const isPl=ch.url.startsWith('ytpl:'),id=ch.url.slice(isPl?5:4);
@@ -366,7 +408,7 @@ function info({title,meta,desc,tags,fav,extra}){
 function markPlaying(){document.querySelectorAll('.card').forEach(c=>c.classList.toggle('playing',c.dataset.key===playingKey))}
 
 /* ---------- favoritos ---------- */
-function favObj(kind,o){return kind==='tv'?{key:'tv:'+o.url,kind,name:o.name,logo:o.logo,url:o.url,groups:o.groups,countryName:o.countryName}:{key:kind+':'+o.id,kind,id:o.id,title:o.title,year:o.year,subj:o.subj,desc:o.desc}}
+function favObj(kind,o){return kind==='tv'?{key:'tv:'+o.url,kind,name:o.name,logo:o.logo,url:o.url,groups:o.groups,countryName:o.countryName,sub:o.sub,uuid:o.uuid,codec:o.codec,bitrate:o.bitrate}:{key:kind+':'+o.id,kind,id:o.id,title:o.title,year:o.year,subj:o.subj,desc:o.desc}}
 function toggleFav(f){const i=S.favs.findIndex(x=>x.key===f.key);if(i>=0){S.favs.splice(i,1);toast('Removido da sua lista')}else{S.favs.unshift(f);toast('Adicionado à sua lista')}store.set('al_favs',S.favs);if(S.view==='favs')render();else syncFavIcons()}
 function syncFavIcons(){document.querySelectorAll('.fav').forEach(b=>b.classList.toggle('on',S.favs.some(f=>f.key===b.dataset.key)))}
 
@@ -409,7 +451,7 @@ async function loadNovelas(view='novelas'){
 }
 function playable(c){return S.showHttp||location.protocol!=='https:'||!/^http:\/\//i.test(c.url)}
 function novFiltered(){const q=S.q.toLowerCase();return (S.nov.list||[]).filter(c=>playable(c)&&(!S.nov.country||c.countryName===S.nov.country)&&(!q||c.name.toLowerCase().includes(q)))}
-function findLive(url){return NOV_YT.find(c=>c.url===url)||S.tvAll.find(c=>c.url===url)||(S.nov.list||[]).find(c=>c.url===url)||(S.dor.list||[]).find(c=>c.url===url)||(S.clsL.list||[]).find(c=>c.url===url)}
+function findLive(url){return S.ytv.items.find(c=>c.url===url)||S.rad.items.find(c=>c.url===url)||NOV_YT.find(c=>c.url===url)||S.tvAll.find(c=>c.url===url)||(S.nov.list||[]).find(c=>c.url===url)||(S.dor.list||[]).find(c=>c.url===url)||(S.clsL.list||[]).find(c=>c.url===url)}
 function tvFiltered(){const q=S.q.toLowerCase();return S.tvAll.filter(c=>playable(c)&&(!S.cat||c.groups.includes(S.cat))&&(!q||c.name.toLowerCase().includes(q)))}
 function tvCard(c){const key='tv:'+c.url;const ini=(c.name.replace(/[^\p{L}\p{N}]/gu,'').slice(0,2).toUpperCase())||'TV';
   return `<div class="card" tabindex="0" data-key="${esc(key)}" data-tv="${esc(c.url)}">
@@ -456,6 +498,66 @@ function vodCard(it,kind){const key=kind+':'+it.id;
     ${it.year?`<span class="yr">${esc(it.year)}</span>`:''}
     <div class="t"><div class="n">${esc(it.title)}</div><div class="s">${esc(it.subj.slice(0,2).join(' · ')||'—')}</div></div></div>`}
 
+/* ---------- Dublados, Clipes e Rádios ---------- */
+const fmtDate=d=>{try{return new Date(d).toLocaleDateString('pt-BR')}catch{return ''}};
+function vidCard(c){const key='tv:'+c.url;
+  return `<div class="card" tabindex="0" data-key="${esc(key)}" data-tv="${esc(c.url)}">
+    <button class="fav ${S.favs.some(f=>f.key===key)?'on':''}" data-key="${esc(key)}" aria-label="Favoritar">♥</button>
+    <div class="vthumb" style="background-image:url('${esc(c.logo)}')">${c.dur?`<span class="dur">${esc(c.dur)}</span>`:''}</div>
+    <div class="t"><div class="n">${esc(c.name)}</div><div class="s">${c.official?'<span class="badge-of">OFICIAL</span>':''}${esc(c.sub||'')}</div></div></div>`}
+async function loadDub(){
+  const Y=S.ytv;Y.loading=true;Y.items=[];renderGrid(true);
+  const chans=Y.dub?DUB_CH.filter(c=>c[0]===Y.dub):DUB_CH;
+  const res=await Promise.allSettled(chans.map(async([id,name])=>{const r=await fetch('/api/ytfeed?channel='+id);if(!r.ok)throw 0;const j=await r.json();
+    return j.items.map(v=>({name:v.title,url:'ytv:'+v.id,logo:v.thumb,groups:['Dublado'],countryName:'YouTube · '+name,sub:name+' · '+fmtDate(v.published),pub:v.published}))}));
+  Y.items=res.flatMap(r=>r.status==='fulfilled'?r.value:[]).sort((a,b)=>(b.pub||'').localeCompare(a.pub||''));
+  if(!res.some(r=>r.status==='fulfilled'))toast('Não consegui ler os canais agora. Tente de novo em instantes.');
+  Y.loading=false;if(S.view==='dublados')renderGrid(false);
+}
+async function loadMus(){
+  const Y=S.ytv;Y.loading=true;Y.items=[];renderGrid(true);
+  const base=S.q||Y.mus||'lançamentos';const q=base+' clipe oficial'+(S.q||Y.mus?'':' 2026');
+  try{const r=await fetch('/api/ytsearch?q='+encodeURIComponent(q));const j=await r.json();
+    Y.items=(j.items||[]).map(v=>({name:v.title,url:'ytv:'+v.id,logo:`https://i.ytimg.com/vi/${v.id}/mqdefault.jpg`,dur:v.length,official:v.official,groups:['Clipe'],countryName:'YouTube · '+v.channel,sub:[v.channel,v.views].filter(Boolean).join(' · ')}));
+  }catch{toast('A busca de clipes falhou. Tente de novo.')}
+  Y.loading=false;if(S.view==='musica')renderGrid(false);
+}
+async function loadRadios(){
+  const R=S.rad;R.loading=true;R.items=[];renderGrid(true);
+  const p=new URLSearchParams({hidebroken:'true',order:'clickcount',reverse:'true',limit:'300'});
+  if(R.cc)p.set('countrycode',R.cc);if(R.tag)p.set('tag',R.tag);if(S.q)p.set('name',S.q);
+  let data=null;
+  for(const h of RB_HOSTS){try{const r=await fetch(h+'/json/stations/search?'+p);if(r.ok){data=await r.json();R.host=h;break}}catch{}}
+  if(!data){toast('Não consegui carregar as rádios agora.');data=[]}
+  const seen=new Set();
+  R.items=data.filter(x=>x.url_resolved&&!seen.has(x.url_resolved)&&seen.add(x.url_resolved)).map(x=>({
+    name:x.name.trim(),url:'radio:'+x.url_resolved,uuid:x.stationuuid,logo:x.favicon||'',groups:(x.tags||'').split(',').filter(Boolean).slice(0,3),
+    countryName:[x.state,x.country].filter(Boolean).join(' · '),state:x.state||'',codec:x.codec,bitrate:x.bitrate}));
+  R.loading=false;if(S.view==='radios')render();
+}
+function radioOk(c){return location.protocol!=='https:'||S.showHttp||/^radio:https:/i.test(c.url)}
+function radCard(c){const key='tv:'+c.url;const ini=(c.name.replace(/[^\p{L}\p{N}]/gu,'').slice(0,2).toUpperCase())||'FM';
+  return `<div class="card" tabindex="0" data-key="${esc(key)}" data-tv="${esc(c.url)}">
+    <button class="fav ${S.favs.some(f=>f.key===key)?'on':''}" data-key="${esc(key)}" aria-label="Favoritar">♥</button>
+    <div class="ch-logo">${c.logo?`<img src="${esc(c.logo)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'${ini}'}))">`:`<span>${ini}</span>`}</div>
+    <div class="t"><div class="n">${esc(c.name)}</div><div class="s">${esc(c.countryName||c.groups.join(' · '))}</div></div></div>`}
+function playRadio(ch){
+  stop();$('#idle').style.display='none';
+  const src=ch.url.slice(6);
+  const box=document.createElement('div');box.className='radio-ui';
+  box.innerHTML=`<div>${ch.logo?`<img src="${esc(ch.logo)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">`:''}<div class="eq"><i></i><i></i><i></i><i></i></div><b>${esc(ch.name)}</b><span style="color:var(--mute)">${esc(ch.countryName||'')}</span><br></div>`;
+  const a=document.createElement('audio');a.controls=true;a.autoplay=true;box.firstElementChild.append(a);$('#screen').append(box);
+  const fail=()=>{box.querySelector('.eq')?.remove();const m=document.createElement('p');m.style.color='var(--on)';m.textContent='Esta rádio não abriu agora. Tente outra.';box.firstElementChild.append(m)};
+  if(/\.m3u8(\?|$)/i.test(src)&&window.Hls&&Hls.isSupported()){hls=new Hls();hls.loadSource(src);hls.attachMedia(a);hls.on(Hls.Events.ERROR,(e,d)=>{if(d.fatal)fail()})}
+  else{a.src=src;a.onerror=fail}
+  a.play().catch(()=>{});
+  $('#liveTag').style.display='block';
+  if(ch.uuid&&S.rad.host)fetch(S.rad.host+'/json/url/'+ch.uuid).catch(()=>{});
+  playingKey='tv:'+ch.url;
+  info({title:ch.name,meta:[ch.countryName,'Rádio web',ch.codec&&ch.bitrate?ch.codec+' '+ch.bitrate+' kbps':''].filter(Boolean).join(' — '),
+    tags:ch.groups,fav:favObj('tv',ch),extra:`<button class="btn" data-copy="${esc(src)}">Copiar link da rádio</button>`});
+  markPlaying();
+}
 /* ---------- render ---------- */
 const opt=(arr,val)=>arr.map(([v,l])=>`<option value="${v}" ${String(v)===String(val)?'selected':''}>${l}</option>`).join('');
 function render(){
@@ -477,6 +579,23 @@ function render(){
     C.innerHTML=[`<button class="chip ${!S.cat?'on':''}" data-cat="">Todos · ${pl.length}</button>`,...cats.map(c=>`<button class="chip ${S.cat===c?'on':''}" data-cat="${esc(c)}">${esc(CAT_PT[c]||c)} · ${counts[c]}</button>`)].join('');
     C.hidden=false;
   }else if(S.view==='favs'){F.innerHTML='';C.innerHTML='';C.hidden=true}
+  else if(S.view==='dublados'){
+    F.innerHTML='<div class="filters"><span class="count" id="count"></span></div>';
+    C.innerHTML=[`<button class="chip ${!S.ytv.dub?'on':''}" data-dub="">Todos os canais</button>`,...DUB_CH.map(([id,n,t])=>`<button class="chip ${S.ytv.dub===id?'on':''}" data-dub="${id}">${esc(n)} · ${esc(t)}</button>`)].join('');C.hidden=false;
+  }
+  else if(S.view==='musica'){
+    F.innerHTML='<div class="filters"><span style="color:var(--mute);font-size:14px">Use a busca no topo para achar um artista ou música.</span><span class="count" id="count"></span></div>';
+    C.innerHTML=MUS_GENRES.map(([g,l])=>`<button class="chip ${S.ytv.mus===g?'on':''}" data-mus="${esc(g)}">${esc(l)}</button>`).join('');C.hidden=false;
+  }
+  else if(S.view==='radios'){
+    const R=S.rad;const states=[...new Set(R.items.map(c=>c.state).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+    F.innerHTML=`<div class="filters"><select id="rcc" aria-label="País">${opt(RADIO_C,R.cc)}</select>
+      ${states.length>1?`<select id="rst" aria-label="Estado"><option value="">Todos os estados</option>${states.map(x=>`<option ${R.state===x?'selected':''}>${esc(x)}</option>`).join('')}</select>`:''}
+      <span class="count" id="count"></span></div>`;
+    $('#rcc').onchange=e=>{R.cc=e.target.value;R.state='';store.set('al_rcc',R.cc);loadRadios()};
+    const rs=$('#rst');if(rs)rs.onchange=e=>{R.state=e.target.value;renderGrid(false)};
+    C.innerHTML=RADIO_TAGS.map(([t,l])=>`<button class="chip ${R.tag===t?'on':''}" data-rtag="${t}">${l}</button>`).join('');C.hidden=false;
+  }
   else if(S.view==='novelas'){
     F.innerHTML='<div class="filters"><span class="count" id="count"></span></div>';
     const counts={};(S.nov.list||[]).forEach(c=>counts[c.countryName]=(counts[c.countryName]||0)+1);
@@ -528,8 +647,26 @@ function renderGrid(loading){
     if(loading||S.nov.loading){G.innerHTML=plat+Array(8).fill('<div class="skel"></div>').join('');return}
     const list=novFiltered();if(cnt)cnt.textContent=list.length+' canais de novela';
     G.innerHTML=plat+(list.length?list.map(tvCard).join(''):'<div class="empty">Nenhum canal de novela no ar nas listas agora. Use as plataformas oficiais acima.</div>');
+  }else if(S.view==='dublados'||S.view==='musica'){G.className='grid tv';M.hidden=true;
+    const Y=S.ytv,isDub=S.view==='dublados';
+    const pre=isDub?`<h3 class="sec">Filmes e desenhos dublados no YouTube<small>Últimos vídeos publicados por canais oficiais e distribuidoras. Tocam aqui no app.</small></h3>`
+      :`<h3 class="sec">Clipes de música<small>${S.q?'Resultados para "'+esc(S.q)+'"':'Clipes oficiais em alta no YouTube'}. O selo OFICIAL marca canais de artista verificados.</small></h3>`;
+    const post=isDub?`<h3 class="sec">Mais filmes, séries e desenhos dublados grátis<small>Plataformas legais e gratuitas. Abrem em nova aba.</small></h3>
+      <div class="plat">${DUB_PLAT.map(([n,d,u,t])=>`<a href="${u}" target="_blank" rel="noopener"><b>${esc(n)}</b><span>${esc(d)}</span><em>${esc(t)}</em></a>`).join('')}</div>`:'';
+    if(loading||Y.loading){G.innerHTML=pre+Array(8).fill('<div class="skel"></div>').join('')+post;return}
+    const list=isDub&&S.q?Y.items.filter(c=>c.name.toLowerCase().includes(S.q.toLowerCase())):Y.items;
+    if(cnt)cnt.textContent=list.length+(isDub?' vídeos':' clipes');
+    G.innerHTML=pre+(list.length?list.map(vidCard).join(''):'<div class="empty">Nada encontrado agora.</div>')+post;
+  }else if(S.view==='radios'){G.className='grid tv';const R=S.rad;
+    const hdr=`<h3 class="sec">Rádios web ao vivo<small>Diretório aberto Radio Browser, com rádios do mundo todo. Toque para ouvir.</small></h3>`;
+    if(loading||R.loading){G.innerHTML=hdr+Array(12).fill('<div class="skel"></div>').join('');M.hidden=true;return}
+    const hidden=R.items.filter(c=>!radioOk(c)).length;
+    const list=R.items.filter(c=>radioOk(c)&&(!R.state||c.state===R.state));
+    if(cnt)cnt.textContent=list.length+' rádios'+(hidden?` (${hidden} sem https ocultas)`:'');
+    G.innerHTML=hdr+(list.length?list.slice(0,S.tvShown).map(radCard).join(''):'<div class="empty">Nenhuma rádio encontrada com esse filtro.</div>');
+    M.hidden=list.length<=S.tvShown;
   }else if(S.view==='favs'){G.className='grid vod';
-    G.innerHTML=S.favs.length?S.favs.map(f=>f.kind==='tv'?tvCard(f):vodCard(f,f.kind)).join(''):'<div class="empty">Sua lista está vazia. Toque no ♥ de um canal, filme ou série.</div>';M.hidden=true;
+    G.innerHTML=S.favs.length?S.favs.map(f=>f.kind==='tv'?(/^radio:/.test(f.url)?radCard(f):/^ytv:/.test(f.url)&&f.logo?vidCard(f):tvCard(f)):vodCard(f,f.kind)).join(''):'<div class="empty">Sua lista está vazia. Toque no ♥ de um canal, filme ou série.</div>';M.hidden=true;
   }else{G.className='grid vod';const v=S.vod;
     let pre='';
     if(S.view==='classicos'){
@@ -549,7 +686,7 @@ function renderGrid(loading){
       pre=liveHtml+`<h3 class="sec">${sec==='desenhos'?'Desenhos animados antigos':'Seriados antigos'} em domínio público<small>Acervo do Internet Archive, com toque para assistir aqui. Filtre por personagem, década ou ano.</small></h3>`;
     }
     if(S.view==='doramas'){
-      const live=(S.dor.list||[]).filter(c=>playable(c)&&!S.q||c.name.toLowerCase().includes(S.q.toLowerCase()));
+      const live=(S.dor.list||[]).filter(c=>playable(c)&&(!S.q||c.name.toLowerCase().includes(S.q.toLowerCase())));
       pre=`<h3 class="sec">Doramas completos em plataformas oficiais<small>Abrem no site da plataforma, em nova aba.</small></h3>
         <div class="plat">${DOR_PLAT.map(([n,d,u,t])=>`<a href="${u}" target="_blank" rel="noopener"><b>${esc(n)}</b><span>${esc(d)}</span><em>${esc(t)}</em></a>`).join('')}</div>
         <h3 class="sec">Canais de dorama ao vivo<small>${S.dor.loading?'Procurando canais…':live.length?live.length+' canais encontrados nas listas públicas.':'Nenhum canal de dorama no ar nas listas agora.'}</small></h3>
@@ -567,15 +704,22 @@ function renderGrid(loading){
 /* ---------- eventos ---------- */
 $('#tabs').onclick=e=>{const b=e.target.closest('button');if(!b)return;S.view=b.dataset.v;
   if(S.view==='classicos'){render();if(S.cls.sec!=='toku')loadVod(true);loadNovelas('classicos')}
-  else if((S.view==='filmes'||S.view==='series'||S.view==='doramas')){render();loadVod(true);if(S.view==='doramas')loadNovelas('doramas')}else{render();if(S.view==='novelas')loadNovelas()}};
+  else if((S.view==='filmes'||S.view==='series'||S.view==='doramas')){render();loadVod(true);if(S.view==='doramas')loadNovelas('doramas')}
+  else if(S.view==='dublados'){render();loadDub()}else if(S.view==='musica'){render();loadMus()}else if(S.view==='radios'){S.tvShown=60;render();loadRadios()}
+  else{render();if(S.view==='novelas')loadNovelas()}};
 $('#chips').onclick=e=>{const b=e.target.closest('.chip');if(!b)return;
   if(S.view==='novelas'){S.nov.country=b.dataset.nc;render()}
+  else if(S.view==='dublados'){S.ytv.dub=b.dataset.dub;render();loadDub()}
+  else if(S.view==='musica'){S.ytv.mus=b.dataset.mus;render();loadMus()}
+  else if(S.view==='radios'){S.rad.tag=b.dataset.rtag;S.rad.state='';S.tvShown=60;render();loadRadios()}
   else if(S.view==='doramas'){S.vod.dc=b.dataset.dc;render();loadVod(true)}
   else if(S.view==='classicos'){S.cls.term=b.dataset.term;render();loadVod(true)}
   else if(S.view==='tv'){S.cat=b.dataset.cat;S.tvShown=60;render()}else{S.vod.genre=b.dataset.genre;render();loadVod(true)}};
-$('#more').onclick=()=>{if(S.view==='tv'){S.tvShown+=60;renderGrid(false)}else{S.vod.page++;loadVod(false)}};
+$('#more').onclick=()=>{if(S.view==='tv'||S.view==='radios'){S.tvShown+=60;renderGrid(false)}else{S.vod.page++;loadVod(false)}};
 let qt;$('#q').oninput=e=>{clearTimeout(qt);qt=setTimeout(()=>{S.q=e.target.value.trim();
-  if(S.view==='tv'||S.view==='novelas'||(S.view==='classicos'&&S.cls.sec==='toku')){S.tvShown=60;renderGrid(false)}else if(S.view!=='favs')loadVod(true)},350)};
+  if(S.view==='tv'||S.view==='novelas'||S.view==='dublados'||(S.view==='classicos'&&S.cls.sec==='toku')){S.tvShown=60;renderGrid(false)}
+  else if(S.view==='musica'){loadMus()}else if(S.view==='radios'){S.tvShown=60;loadRadios()}
+  else if(S.view!=='favs')loadVod(true)},500)};
 function findFav(k){return S.favs.find(f=>f.key===k)}
 function openCard(card){
   if(card.dataset.tv){const url=card.dataset.tv;const ch=findLive(url)||findFav('tv:'+url);if(ch)playLive(ch)}
