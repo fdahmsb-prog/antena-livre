@@ -24,30 +24,35 @@ function parseFeed(xml) {
   return { channel, items };
 }
 
-// O YouTube responde 200 em /shorts/ID só quando o vídeo é um Short; vídeos normais redirecionam.
-async function isShort(id) {
-  try {
-    const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 4000);
-    const r = await fetch(`https://www.youtube.com/shorts/${id}`, { method: 'HEAD', redirect: 'manual', signal: ctl.signal,
-      headers: { 'User-Agent': 'Mozilla/5.0 AntenaLivre/1.0', 'Cookie': 'CONSENT=YES+1; SOCS=CAI' } });
-    clearTimeout(t);
-    return r.status === 200;
-  } catch { return false; }
+// Título com hashtag ou emoji: nesses canais, é sempre Short ou divulgação, nunca filme/episódio.
+const looksShort = t => /(^|\s)#\w/u.test(t) || /\p{Extended_Pictographic}/u.test(t);
+
+async function getFeed(qs) {
+  const r = await fetch(`https://www.youtube.com/feeds/videos.xml?${qs}`, {
+    headers: { 'User-Agent': 'Mozilla/5.0 AntenaLivre/1.0' }
+  });
+  if (!r.ok) return null;
+  return parseFeed(await r.text());
 }
 
 module.exports = async (req, res) => {
-  const { channel = '' } = req.query || {};
+  const { channel = '', debug = '' } = req.query || {};
   if (!/^UC[\w-]{22}$/.test(channel)) { res.status(400).json({ error: 'canal inválido' }); return; }
   try {
-    const r = await fetch(`https://www.youtube.com/feeds/videos.xml?channel_id=${channel}`, {
-      headers: { 'User-Agent': 'Mozilla/5.0 AntenaLivre/1.0' }
-    });
-    if (!r.ok) throw new Error('feed ' + r.status);
-    const out = parseFeed(await r.text());
-    const checks = await Promise.all(out.items.map(v => v.short ? true : isShort(v.id)));
-    out.items = out.items.filter((v, i) => !checks[i]).map(({ short, ...v }) => v);
+    // 1º: lista oficial do canal só com vídeos longos (UULF = uploads sem Shorts)
+    let source = 'longos';
+    let out = await getFeed(`playlist_id=UULF${channel.slice(2)}`);
+    // 2º: feed normal do canal
+    if (!out || !out.items.length) {
+      source = 'canal';
+      out = await getFeed(`channel_id=${channel}`);
+      if (!out) throw new Error('feed');
+    }
+    const before = out.items.length;
+    out.items = out.items.filter(v => !v.short && (source === 'longos' || !looksShort(v.title))).map(({ short, ...v }) => v);
     res.setHeader('Cache-Control', 's-maxage=1800, stale-while-revalidate=3600');
     res.setHeader('Access-Control-Allow-Origin', '*');
+    if (debug) Object.assign(out, { source, before, after: out.items.length });
     res.status(200).json(out);
   } catch (e) {
     res.status(502).json({ channel: '', items: [], error: 'falha ao ler o canal' });
