@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Antena Livre</title>
-<link rel="manifest" href="/manifest.webmanifest">
+<link rel="manifest" href="./manifest.webmanifest">
 <meta name="theme-color" content="#0a1417">
-<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
-<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Antena Livre">
@@ -131,13 +131,24 @@ body.tvmode .tvhint{display:block;width:100%}
 @keyframes sk{to{background-position:-200% 0}}
 @media(max-width:900px){.stage{grid-template-columns:minmax(0,1fr)}.side{max-height:none}}
 @media(max-width:600px){nav{width:100%;overflow-x:auto}nav button{flex:1 0 auto;padding:9px 10px;font-size:14px}.grid.tv{grid-template-columns:repeat(2,minmax(0,1fr))}.grid.vod{grid-template-columns:repeat(2,minmax(0,1fr))}.count{margin-left:0;width:100%}}
+.catalog-head{margin:24px 0 12px}
+.catalog-head h2{font-size:clamp(22px,4vw,34px);margin:0}
+.catalog-head p{margin:6px 0;color:var(--mute)}
+.catalog-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr));gap:12px;margin-bottom:18px}
+.catalog-card{position:relative;display:flex;flex-direction:column;gap:8px;min-height:146px;padding:14px 45px 14px 14px}
+.catalog-card .tag{align-self:flex-start}
+.catalog-card .s{color:var(--mute);font-size:14px}
+.catalog-card .catalog-action{margin-top:auto;font-size:13px}
+.catalog-card:focus-visible{outline:2px solid currentColor;outline-offset:3px}
+#destaques:empty{display:none}
 </style>
 </head>
 <body>
 <header><div class="bar">
   <div class="logo"><i></i>Antena Livre</div>
   <nav id="tabs">
-    <button data-v="tv" class="on">TV ao vivo</button>
+    <button data-v="inicio" class="on">Início</button>
+    <button data-v="tv">TV ao vivo</button>
     <button data-v="filmes">Filmes</button>
     <button data-v="series">Séries</button>
     <button data-v="novelas">Novelas</button>
@@ -148,7 +159,7 @@ body.tvmode .tvhint{display:block;width:100%}
     <button data-v="radios">Rádios</button>
     <button data-v="favs">Minha lista</button>
   </nav>
-  <div class="search"><input id="q" type="search" placeholder="Buscar canal, filme ou série…" autocomplete="off"></div>
+  <div class="search"><input id="q" type="search" aria-label="Buscar no catálogo" placeholder="Buscar no catálogo…" autocomplete="off"></div>
   <button class="btn" id="tvBtn" aria-pressed="false">Modo TV</button>
   <button class="btn pri" id="installBtn" hidden>Instalar app</button>
   <div class="tvhint">Setas para navegar · OK para abrir · OK no vídeo para tela cheia · Voltar para sair</div>
@@ -172,12 +183,13 @@ body.tvmode .tvhint{display:block;width:100%}
     </aside>
   </section>
 
+  <section id="destaques" aria-label="Destaques do catálogo"></section>
   <section id="filters"></section>
   <div class="chips" id="chips"></div>
   <div class="grid" id="grid"></div>
   <button class="btn more" id="more" hidden>Carregar mais</button>
 
-  <p class="note">Canais: listas públicas do projeto aberto iptv-org (sinais que as próprias emissoras disponibilizam na internet; alguns podem estar fora do ar ou bloqueados por região). Filmes e séries: acervo de domínio público do Internet Archive. Nenhum conteúdo é hospedado por este app.</p>
+  <p class="note">Destaques: emissoras, plataformas e canais oficiais. Parte do catálogo abre no serviço de origem e pode exigir cadastro ou assinatura. Canais: listas públicas do projeto aberto iptv-org (sinais que as próprias emissoras disponibilizam na internet; alguns podem estar fora do ar ou bloqueados por região). Filmes e séries: acervo de domínio público do Internet Archive. Nenhum conteúdo é hospedado por este app.</p>
 </main>
 
 <dialog id="m3uDlg">
@@ -190,6 +202,7 @@ body.tvmode .tvhint{display:block;width:100%}
 <div class="toast" id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.13/hls.min.js"></script>
+<script src="./catalogo.js"></script>
 <script>
 {
 const $=s=>document.querySelector(s);
@@ -268,6 +281,7 @@ const TOKU_HITS=[
 ];
 /* YouTube ao vivo — canais oficiais das emissoras (ID verificado; @ = só abre no YouTube) */
 const YT=[
+  ['@assembleiarr','TV Assembleia de Roraima','Legislative','Brasil'],
   ['UCvdwhh_fDyWccR42-rReZLw','CNN Brasil','News','Brasil'],
   ['UCP391YRAjSOdM_bwievgaZA','Jovem Pan News','News','Brasil'],
   ['UCuiLR4p6wQ3xLEm15pEn1Xw','Record News','News','Brasil'],
@@ -335,7 +349,7 @@ const RADIO_TAGS=[['','Mais ouvidas'],['news','Notícias'],['talk','Falada'],['s
 const RADIO_C=[['BR','Brasil'],['PT','Portugal'],['US','Estados Unidos'],['GB','Reino Unido'],['ES','Espanha'],['AR','Argentina'],['MX','México'],['FR','França'],['DE','Alemanha'],['IT','Itália'],['JP','Japão'],['','Mundo todo']];
 const RB_HOSTS=['https://de1.api.radio-browser.info','https://nl1.api.radio-browser.info','https://at1.api.radio-browser.info','https://de2.api.radio-browser.info'];
 /* ---------- estado ---------- */
-const S={view:'tv',country:(c=>c==='yt'?'youtube':c)(store.get('al_country','br')),cat:'',tvAll:[],tvShown:60,custom:null,
+const S={view:'inicio',country:(c=>c==='yt'?'youtube':c)(store.get('al_country','br')),cat:'',tvAll:[],tvShown:60,custom:null,
   vod:{genre:'',decade:'',year:'',sort:'downloads desc',page:1,items:[],total:0,loading:false},
   nov:{list:null,loading:false,country:''},dor:{list:null,loading:false},clsL:{list:null,loading:false},cls:{sec:'desenhos',term:''},
   showHttp:store.get('al_http',false),
@@ -344,7 +358,7 @@ const S={view:'tv',country:(c=>c==='yt'?'youtube':c)(store.get('al_country','br'
 let hls=null,playingKey='';
 
 /* ---------- player ---------- */
-function stop(){if(hls){hls.destroy();hls=null}$('#screen').querySelectorAll('video,iframe').forEach(e=>e.remove());$('#liveTag').style.display='none'}
+function stop(){if(hls){hls.destroy();hls=null}$('#screen').querySelectorAll('video,iframe,.radio-ui').forEach(e=>e.remove());$('#liveTag').style.display='none'}
 function playLive(ch){
   if(ch.url.startsWith('radio:'))return playRadio(ch);
   stop();$('#idle').style.display='none';
@@ -478,18 +492,21 @@ function iaQuery(){
   if(S.q)parts.push(`(title:(${S.q.replace(/[():"\\]/g,' ')}))`);
   return parts.join(' AND ');
 }
+let vodRequest=0;
 async function loadVod(reset){
-  const v=S.vod;if(v.loading)return;if(reset){v.page=1;v.items=[];v.total=0}
+  const v=S.vod;if(v.loading&&!reset)return;
+  const request=++vodRequest,view=S.view;if(reset){v.page=1;v.items=[];v.total=0}
   v.loading=true;renderGrid(reset);
   const p=new URLSearchParams({q:iaQuery(),rows:'36',page:String(v.page),output:'json'});
   ['identifier','title','year','subject','description','downloads'].forEach(f=>p.append('fl[]',f));p.append('sort[]',v.sort);
   try{const r=await fetch('https://archive.org/advancedsearch.php?'+p);const j=await r.json();
+    if(request!==vodRequest||view!==S.view)return;
     v.total=j.response.numFound;
     v.items.push(...j.response.docs.map(d=>({id:d.identifier,title:Array.isArray(d.title)?d.title[0]:d.title||d.identifier,year:d.year?String(d.year).slice(0,4):'',
       subj:[].concat(d.subject||[]).flatMap(s=>String(s).split(/[;,]/)).map(s=>s.trim()).filter(Boolean),
       desc:String([].concat(d.description||'')[0]).replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim().slice(0,700)})));
-  }catch{toast('Falha ao consultar o acervo. Tente de novo.')}
-  v.loading=false;renderGrid(false);
+  }catch{if(request===vodRequest&&view===S.view){if(!reset)v.page--;toast('Falha ao consultar o acervo. Tente de novo.')}}
+  finally{if(request===vodRequest){v.loading=false;if(view===S.view)renderGrid(false)}}
 }
 function vodCard(it,kind){const key=kind+':'+it.id;
   return `<div class="card" tabindex="0" data-key="${esc(key)}" data-vod="${esc(it.id)}" data-kind="${kind}">
@@ -558,6 +575,56 @@ function playRadio(ch){
     tags:ch.groups,fav:favObj('tv',ch),extra:`<button class="btn" data-copy="${esc(src)}">Copiar link da rádio</button>`});
   markPlaying();
 }
+/* ---------- catálogo de destaques ---------- */
+const CATEGORIAS={tv:'TV ao vivo',filmes:'Filmes',series:'Séries',novelas:'Novelas',doramas:'Doramas',classicos:'Clássicos',musica:'Clipes',radios:'Rádios'};
+const normalizar=texto=>texto.normalize('NFD').replace(/\p{M}/gu,'').toLowerCase();
+const buscaCatalogo=text=>normalizar(text).includes(normalizar(S.q));
+
+function favoritoCatalogo(item){
+  return {key:'catalogo:'+item.id,kind:'catalogo',id:item.id};
+}
+function catalogCard(item){
+  const {key}=favoritoCatalogo(item);
+  const on=S.favs.some(f=>f.key===key);
+  return `<div class="card catalog-card" tabindex="0" data-key="${esc(key)}" data-catalogo="${esc(item.id)}">
+    <button class="fav ${on?'on':''}" data-key="${esc(key)}" aria-label="Favoritar ${esc(item.titulo)}">♥</button>
+    <span class="tag">${esc(CATEGORIAS[item.categoria])}</span>
+    <strong>${esc(item.titulo)}</strong><span class="s">${esc(item.detalhe)}</span>
+    <span class="catalog-action">${item.video?'Assistir aqui':'Ver onde assistir ou ouvir'} · ${esc(item.fonte)}</span>
+  </div>`;
+}
+function renderCatalogo(){
+  const box=$('#destaques');
+  box.innerHTML='';
+  const inicio=S.view==='inicio';
+  const items=CATALOGO.filter(item=>(inicio||item.categoria===S.view)&&
+    buscaCatalogo([item.titulo,item.fonte,item.detalhe,CATEGORIAS[item.categoria]].join(' ')));
+  if(!inicio&&!items.length)return;
+  const titulo=inicio?(S.q?'Resultados nos destaques':'Explore o Antena Livre'):'Destaques';
+  box.innerHTML=`<div class="catalog-head"><h2>${titulo}</h2>
+    ${inicio?'<p>Encontre canais, títulos e rádios. Abra as abas para explorar os catálogos completos.</p>':''}</div>
+    ${items.length?`<div class="catalog-grid">${items.map(catalogCard).join('')}</div>`:'<p class="empty">Nenhum destaque encontrado.</p>'}`;
+}
+function abrirCatalogo(item){
+  stop();playingKey='catalogo:'+item.id;
+  const idle=$('#idle');
+  idle.style.display=item.video?'none':'grid';
+  if(item.video){
+    const frame=document.createElement('iframe');
+    frame.src='https://www.youtube.com/embed/'+encodeURIComponent(item.video)+'?autoplay=1';
+    frame.title=item.titulo;
+    frame.allow='autoplay; encrypted-media; picture-in-picture';
+    frame.allowFullscreen=true;
+    $('#screen').append(frame);
+  }else{
+    idle.innerHTML=`<div><b>${esc(item.titulo)}</b>Disponível em ${esc(item.fonte)}.</div>`;
+  }
+  info({title:item.titulo,meta:item.fonte,desc:item.detalhe,fav:favoritoCatalogo(item),
+    extra:`<a class="btn" href="${esc(item.url)}" target="_blank" rel="noopener">Abrir em ${esc(item.fonte)}</a>`});
+  markPlaying();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
 /* ---------- render ---------- */
 const opt=(arr,val)=>arr.map(([v,l])=>`<option value="${v}" ${String(v)===String(val)?'selected':''}>${l}</option>`).join('');
 function render(){
@@ -578,7 +645,7 @@ function render(){
     const cats=Object.keys(counts).sort((a,b)=>counts[b]-counts[a]);
     C.innerHTML=[`<button class="chip ${!S.cat?'on':''}" data-cat="">Todos · ${pl.length}</button>`,...cats.map(c=>`<button class="chip ${S.cat===c?'on':''}" data-cat="${esc(c)}">${esc(CAT_PT[c]||c)} · ${counts[c]}</button>`)].join('');
     C.hidden=false;
-  }else if(S.view==='favs'){F.innerHTML='';C.innerHTML='';C.hidden=true}
+  }else if(S.view==='favs'||S.view==='inicio'){F.innerHTML='';C.innerHTML='';C.hidden=true}
   else if(S.view==='dublados'){
     F.innerHTML='<div class="filters"><span class="count" id="count"></span></div>';
     C.innerHTML=[`<button class="chip ${!S.ytv.dub?'on':''}" data-dub="">Todos os canais</button>`,...DUB_CH.map(([id,n,t])=>`<button class="chip ${S.ytv.dub===id?'on':''}" data-dub="${id}">${esc(n)} · ${esc(t)}</button>`)].join('');C.hidden=false;
@@ -633,6 +700,9 @@ function render(){
 }
 function renderGrid(loading){
   const G=$('#grid'),M=$('#more'),cnt=$('#count');
+  M.disabled=false;M.textContent='Carregar mais';
+  renderCatalogo();
+  if(S.view==='inicio'){G.innerHTML='';M.hidden=true;markPlaying();return}
   if(S.view==='tv'){G.className='grid tv';
     if(loading||(!S.tvAll.length&&!S.custom&&loading!==false)){G.innerHTML=Array(12).fill('<div class="skel"></div>').join('');M.hidden=true;return}
     const list=tvFiltered();if(cnt)cnt.textContent=list.length+' canais';
@@ -666,7 +736,16 @@ function renderGrid(loading){
     G.innerHTML=hdr+(list.length?list.slice(0,S.tvShown).map(radCard).join(''):'<div class="empty">Nenhuma rádio encontrada com esse filtro.</div>');
     M.hidden=list.length<=S.tvShown;
   }else if(S.view==='favs'){G.className='grid vod';
-    G.innerHTML=S.favs.length?S.favs.map(f=>f.kind==='tv'?(/^radio:/.test(f.url)?radCard(f):/^ytv:/.test(f.url)&&f.logo?vidCard(f):tvCard(f)):vodCard(f,f.kind)).join(''):'<div class="empty">Sua lista está vazia. Toque no ♥ de um canal, filme ou série.</div>';M.hidden=true;
+    const cards=S.favs.map(f=>{
+      if(f.kind==='catalogo'){
+        const item=CATALOGO.find(item=>item.id===f.id);
+        return item&&buscaCatalogo(item.titulo)?catalogCard(item):'';
+      }
+      if(!buscaCatalogo(f.title||f.name||''))return '';
+      return f.kind==='tv'?(/^radio:/.test(f.url)?radCard(f):/^ytv:/.test(f.url)&&f.logo?vidCard(f):tvCard(f)):vodCard(f,f.kind);
+    }).join('');
+    G.innerHTML=cards||`<div class="empty">${S.q?'Nenhum favorito encontrado.':'Sua lista está vazia. Toque no ♥ para guardar um item.'}</div>`;
+    M.hidden=true;
   }else{G.className='grid vod';const v=S.vod;
     let pre='';
     if(S.view==='classicos'){
@@ -696,7 +775,7 @@ function renderGrid(loading){
     if(loading){G.innerHTML=pre+Array(12).fill('<div class="skel" style="height:280px"></div>').join('');M.hidden=true;return}
     if(cnt)cnt.textContent=v.total?v.total.toLocaleString('pt-BR')+' títulos':'';
     G.innerHTML=pre+(v.items.length?v.items.map(i=>vodCard(i,S.view)).join(''):(v.loading?'':`<div class="empty">Nada encontrado com esses filtros. ${S.view==='doramas'?'Para filmes coreanos clássicos, veja o canal Korean Classic Film acima.':'Experimente outra década ou categoria.'}</div>`));
-    M.hidden=v.items.length>=v.total||!v.items.length;M.textContent=v.loading?'Carregando…':'Carregar mais';
+    M.hidden=v.items.length>=v.total||!v.items.length;M.disabled=v.loading;M.textContent=v.loading?'Carregando…':'Carregar mais';
   }
   markPlaying();
 }
@@ -717,22 +796,28 @@ $('#chips').onclick=e=>{const b=e.target.closest('.chip');if(!b)return;
   else if(S.view==='tv'){S.cat=b.dataset.cat;S.tvShown=60;render()}else{S.vod.genre=b.dataset.genre;render();loadVod(true)}};
 $('#more').onclick=()=>{if(S.view==='tv'||S.view==='radios'){S.tvShown+=60;renderGrid(false)}else{S.vod.page++;loadVod(false)}};
 let qt;$('#q').oninput=e=>{clearTimeout(qt);qt=setTimeout(()=>{S.q=e.target.value.trim();
-  if(S.view==='tv'||S.view==='novelas'||S.view==='dublados'||(S.view==='classicos'&&S.cls.sec==='toku')){S.tvShown=60;renderGrid(false)}
+  if(S.view==='inicio'||S.view==='favs'||S.view==='tv'||S.view==='novelas'||S.view==='dublados'||(S.view==='classicos'&&S.cls.sec==='toku')){S.tvShown=60;renderGrid(false)}
   else if(S.view==='musica'){loadMus()}else if(S.view==='radios'){S.tvShown=60;loadRadios()}
   else if(S.view!=='favs')loadVod(true)},500)};
 function findFav(k){return S.favs.find(f=>f.key===k)}
 function openCard(card){
-  if(card.dataset.tv){const url=card.dataset.tv;const ch=findLive(url)||findFav('tv:'+url);if(ch)playLive(ch)}
+  if(card.dataset.catalogo){
+    const item=CATALOGO.find(item=>item.id===card.dataset.catalogo);
+    if(item)abrirCatalogo(item);
+  }else if(card.dataset.tv){const url=card.dataset.tv;const ch=findLive(url)||findFav('tv:'+url);if(ch)playLive(ch)}
   else{const kind=card.dataset.kind,id=card.dataset.vod;const it=S.vod.items.find(i=>i.id===id)||findFav(kind+':'+id);if(it)playVod(it,kind)}
   if(document.body.classList.contains('tvmode'))setTimeout(()=>{$('#screen').focus({preventScroll:true});window.scrollTo({top:0,behavior:'smooth'})},60);
 }
-$('#grid').onclick=e=>{
+function gridClick(e){
   const fb=e.target.closest('.fav');
   if(fb){e.stopPropagation();const k=fb.dataset.key,card=fb.closest('.card');
-    let o=findFav(k);if(!o){if(card.dataset.tv){const c=findLive(card.dataset.tv);o=favObj('tv',c)}else{const it=S.vod.items.find(i=>i.id===card.dataset.vod);o=favObj(card.dataset.kind,it)}}
+    let o=findFav(k);if(!o){if(card.dataset.catalogo){o=favoritoCatalogo(CATALOGO.find(item=>item.id===card.dataset.catalogo))}else if(card.dataset.tv){const c=findLive(card.dataset.tv);o=favObj('tv',c)}else{const it=S.vod.items.find(i=>i.id===card.dataset.vod);o=favObj(card.dataset.kind,it)}}
     toggleFav(o);return}
   const card=e.target.closest('.card');if(card)openCard(card)};
-$('#grid').onkeydown=e=>{if(e.key==='Enter'&&e.target.classList.contains('card'))openCard(e.target)};
+for(const selector of ['#grid','#destaques']){
+  $(selector).onclick=gridClick;
+  $(selector).onkeydown=e=>{if(e.key==='Enter'&&e.target.classList.contains('card'))openCard(e.target)};
+}
 $('#info').onclick=e=>{const b=e.target.closest('[data-copy]');if(!b)return;
   navigator.clipboard.writeText(b.dataset.copy).then(()=>toast('Link copiado'),()=>toast('Não foi possível copiar'))};
 
@@ -749,7 +834,7 @@ $('#m3uGo').onclick=async()=>{
 render();loadCountry(S.country);loadCountryList();
 
 /* ---------- instalação como app (PWA) ---------- */
-if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('/sw.js').catch(()=>{});
+if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1'))navigator.serviceWorker.register('./sw.js').catch(()=>{});
 let deferredPrompt=null;
 const standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone;
 const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
@@ -792,7 +877,7 @@ function tvBack(){
   if(document.fullscreenElement){document.exitFullscreen().catch(()=>{});return true}
   const d=document.querySelector('dialog[open]');if(d){d.close();return true}
   const act=document.activeElement;
-  if(act&&act.closest&&act.closest('#grid')){$('#tabs button.on').focus();window.scrollTo({top:0,behavior:'smooth'});return true}
+  if(act&&act.closest&&act.closest('#grid,#destaques')){$('#tabs button.on').focus();window.scrollTo({top:0,behavior:'smooth'});return true}
   return false;
 }
 document.addEventListener('keydown',e=>{

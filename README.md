@@ -61,3 +61,31 @@ npx serve .
 1. Suba este repositório no GitHub.
 2. No Vercel: **Add New → Project → Import** o repositório.
 3. Framework Preset: **Other**. Sem comando de build. Clique em **Deploy**.
+
+## Catálogo de destaques
+
+A aba **Início** reúne fontes oficiais por categoria e permite buscar por título,
+fonte ou descrição. Os destaques também aparecem nas abas correspondentes e podem
+ser salvos em **Minha lista**.
+
+Para atualizar os destaques, edite `catalogo.js`. Use um `id` único e estável por
+item para preservar os favoritos. As categorias aceitas são `tv`, `filmes`,
+`series`, `novelas`, `doramas`, `classicos`, `musica` e `radios`.
+Informe a URL oficial e, para um vídeo do YouTube que permita incorporação,
+preencha também `video` com o ID. Os demais itens oferecem um link para a
+plataforma de origem.
+
+### Atualizar o app existente
+
+1. Extraia o ZIP em uma pasta separada. Abra `index.html` para conferir a aba
+   **Início**. Para testar via servidor local, use o comando da seção anterior.
+2. No repositório **antena-livre**, envie o **conteúdo** da pasta extraída
+   para a raiz do projeto. Para revisar antes de publicar, crie uma branch e
+   confira o preview do Vercel antes de mesclar.
+3. Confira a aba Início, o player, Minha lista e a instalação no endereço HTTPS
+   após a publicação.
+
+Os destaques e favoritos são estáticos e funcionam também no GitHub Pages. A
+busca dinâmica de clipes, o feed de dublados e a consulta de lives do YouTube
+usam as funções da pasta `api/`, executadas pelo Vercel. No GitHub Pages,
+a consulta de lives usa o fallback do player ou o link oficial.
